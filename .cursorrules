@@ -1,0 +1,182 @@
+version: 1
+
+projects:
+  - name: tender-shield-pro
+    description: >
+      SaaS-платформа TenderShield для анализа тендерной документации (FastAPI + React/TS, RAG на ChromaDB + Ollama).
+
+    # Базовый контекст проекта
+    context:
+      root: .
+      include:
+        - backend/**
+        - frontend/**
+        - infra/**
+        - README.md
+        - QUICK_START.md
+        - PROJECT_STATUS.md
+      exclude:
+        - backend/venv/**
+        - frontend/venv/**
+        - frontend/node_modules/**
+        - backend/__pycache__/**
+        - **/*.pyc
+        - **/dist/**
+        - **/.pytest_cache/**
+
+    # Глобальные правила поведения ассистента
+    rules:
+      - id: style.general
+        scope: global
+        description: >
+          Ассистент работает как старший разработчик: отвечает коротко, по делу,
+          с приоритетом стабильности и воспроизводимости.
+        prompts:
+          - >
+            Всегда думай о production-стабильности: не ломай существующие контрактные API и модели без крайней необходимости.
+          - >
+            Если есть риск поломать работающий функционал, сначала предложи минимальное изменение или фича-флаг.
+
+      - id: backend.python.fastapi
+        scope:
+          paths:
+            - backend/**
+        description: >
+          Правила для Python/FastAPI-бэкенда, работы с БД, RAG и Ollama.
+        prompts:
+          - >
+            При изменении backend-логики:
+            - сохраняй совместимость с существующими схемами в `schemas.py`;
+            - не меняй структуру JWT и авторизации без жёсткой необходимости;
+            - уважай fallback PostgreSQL -> SQLite, не удаляй защитную логику от UnicodeDecodeError.
+          - >
+            Все новые зависимости должны быть добавлены в `backend/requirements.txt` с фиксированной минимальной версией.
+          - >
+            Для эндпоинтов FastAPI:
+            - всегда описывай Pydantic-схемы;
+            - обрабатывай ошибки через `HTTPException` и логируй важные сбои;
+            - не добавляй скрытые тестовые пользователи или обход авторизации.
+          - >
+            При работе с Ollama и RAG:
+            - используй `_safe_ollama_invoke` и `rag_engine.get_law_snippets`, не дублируй прямые вызовы;
+            - учитывай CUDA/GPU-ошибки и текстовый fallback, не убирай существующие механизмы деградации.
+
+      - id: backend.trial_and_payments
+        scope:
+          paths:
+            - backend/auth.py
+            - backend/main.py
+            - backend/payment.py
+        description: >
+          Логика триала, тарифов и платежей должна оставаться согласованной и безопасной.
+        prompts:
+          - >
+            Не меняй длительность триала (7 дней) и ограничение trial‑регистраций по IP без явной просьбы пользователя.
+          - >
+            Любые изменения в платежах через YooKassa должны:
+            - сохранять mock-режим по умолчанию в dev;
+            - не добавлять реальные секреты в репозиторий;
+            - быть чётко описаны в комментариях и документации.
+
+      - id: backend.tests
+        scope:
+          paths:
+            - backend/tests/**
+            - backend/test_*.py
+        description: >
+          Поддержание высокого покрытия тестами и стабильного прогона pytest.
+        prompts:
+          - >
+            При изменении функционала в backend:
+            - обновляй или добавляй тесты в `backend/tests`;
+            - по возможности сохраняй совместимость со старыми тестами, если поведение не должно меняться.
+          - >
+            Избегай флейки-тестов, связанных с временем, сетью или Ollama; по необходимости мокируй такие вызовы.
+
+      - id: frontend.react.ts
+        scope:
+          paths:
+            - frontend/src/**
+        description: >
+          Правила для React + TypeScript фронтенда (Vite, Tailwind).
+        prompts:
+          - >
+            Следуй существующей архитектуре:
+            - типы в `src/types.ts`;
+            - сервисы API в `src/services/*`;
+            - крупные экраны в `src/components/*`.
+          - >
+            При добавлении новых API-вызовов:
+            - используй уже существующие base‑fetch/util-функции, не дублируй код;
+            - добавляй типы ответов и ошибок;
+            - отображай пользователю понятные сообщения об ошибках.
+          - >
+            UI делай в едином стиле с текущим интерфейсом (Tailwind, светлая тема по умолчанию, читаемые шрифты).
+
+      - id: frontend.help_and_ux
+        scope:
+          paths:
+            - frontend/src/components/HelpGuide.tsx
+            - frontend/src/components/**
+        description: >
+          Справка и UX должны оставаться понятными для тендерных специалистов (не программистов).
+        prompts:
+          - >
+            В текстах интерфейса и помощи используй простый деловой русский язык, избегай жаргона и технических терминов без пояснения.
+          - >
+            При добавлении новых возможностей всегда:
+            - обновляй `HelpGuide`;
+            - проверяй, что навигация в `Sidebar` остаётся логичной и не перегруженной.
+
+      - id: file_handling_and_formats
+        scope:
+          paths:
+            - backend/main.py
+            - backend/utils/file_validator.py
+            - frontend/src/utils/fileValidation.ts
+        description: >
+          Поддержка разных форматов файлов и защита от ошибок чтения.
+        prompts:
+          - >
+            Поддерживай обработку PDF, DOCX/DOC, TXT, RTF, XLS/XLSX на backend и валидацию тех же форматов на frontend.
+          - >
+            Не возвращай пользователю необработанные stack trace; вместо этого используй дружелюбные сообщения
+            вроде «Файл не читается», логируя подробности только на сервере.
+
+      - id: deployment_and_scripts
+        scope:
+          paths:
+            - start.ps1
+            - start.bat
+            - backend/start-*.bat
+            - frontend/start-*.bat
+            - infra/**
+        description: >
+          Скрипты запуска и деплоя должны быть простыми и повторяемыми.
+        prompts:
+          - >
+            При изменении скриптов запуска:
+            - сохраняй принцип «одна команда запускает всё» для дев‑режима;
+            - явно документируй шаги в `QUICK_START.md` и backend/frontend README.
+          - >
+            Не добавляй интерактивные шаги в production‑скрипты; всё должно работать без вопросов/ввода от пользователя.
+
+      - id: docs_and_reports
+        scope:
+          paths:
+            - README.md
+            - backend/README.md
+            - frontend/README.md
+            - **/*ОТЧЕТ*.md
+            - PROJECT_STATUS.md
+            - CHECKLIST.md
+        description: >
+          Документация и отчёты должны отражать реальное состояние системы.
+        prompts:
+          - >
+            После значимых архитектурных изменений обновляй соответствующие отчёты и README,
+            чтобы новый разработчик мог запустить систему по документации «как есть».
+          - >
+            Структурируй длинные отчёты с заголовками `##`/`###`, списками и краткими summary‑блоками.
+
+

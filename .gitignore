@@ -1,0 +1,11 @@
+node_modules/
+.env
+.env.*
+.venv/
+__pycache__/
+*.log
+.DS_Store
+# Локальные окружения и секреты
+backend/.env
+frontend/.env
+*.env

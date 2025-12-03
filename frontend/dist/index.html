@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ru" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Тендер.Щит.AI | Система защиты бизнеса</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: {
+              sinaps: {
+                bg: 'var(--bg-app)',
+                card: 'var(--bg-card)',
+                border: 'var(--border-color)',
+                primary: '#00d4ff',
+                accent: '#00e648',
+                text: 'var(--text-main)',
+                muted: 'var(--text-muted)',
+                input: 'var(--bg-input)'
+              }
+            },
+            fontFamily: {
+              sans: ['Inter', 'sans-serif'],
+              mono: ['JetBrains Mono', 'monospace'],
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+      /* Твои стили CSS (root, dark, body...) оставь здесь как было */
+      :root {
+        --bg-app: #f8fafc;
+        --bg-card: #ffffff;
+        --bg-input: #f1f5f9;
+        --border-color: #e2e8f0;
+        --text-main: #0f172a;
+        --text-muted: #64748b;
+      }
+      .dark {
+        --bg-app: #0f1419;
+        --bg-card: #1a1f2e;
+        --bg-input: #0f1419;
+        --border-color: #2a3441;
+        --text-main: #e8f0ff;
+        --text-muted: #a8b5cc;
+      }
+      body {
+        background-color: var(--bg-app);
+        color: var(--text-main);
+      }
+    </style>
+    <script type="module" crossorigin src="/assets/index-DlWn89IN.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-DpRRMTkE.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
