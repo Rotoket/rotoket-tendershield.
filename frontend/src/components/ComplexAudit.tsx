@@ -28,6 +28,15 @@ const verdictColor = (verdict: VerdictType | string): string => {
   }
 };
 
+const blockStatusColor = (status?: string): string => {
+  if (!status) return 'bg-slate-800 border-slate-700 text-slate-200';
+  const upper = status.toUpperCase();
+  if (upper === 'RED') return 'bg-red-500/10 border-red-500/40 text-red-300';
+  if (upper === 'YELLOW' || upper === 'ORANGE') return 'bg-yellow-500/10 border-yellow-500/40 text-yellow-300';
+  if (upper === 'GREEN') return 'bg-emerald-500/10 border-emerald-500/40 text-emerald-300';
+  return 'bg-slate-800 border-slate-700 text-slate-200';
+};
+
 interface ComplexAuditProps {
   // Вызывается при выборе документа для передачи параметров в калькулятор
   onSelectForCalculator?: (preset: CalculatorPreset) => void;
@@ -167,6 +176,17 @@ const ComplexAudit: React.FC<ComplexAuditProps> = ({ onSelectForCalculator, onOp
     } finally {
       setIsLegalLoading(false);
     }
+  };
+
+  // Простейшая проверка согласованности значений между документами
+  const getConsistency = (values: (string | undefined | null)[]): 'match' | 'mismatch' | 'unknown' => {
+    const normalized = values
+      .map((v) => (v || '').toString().trim())
+      .filter((v) => v.length > 0);
+    if (normalized.length <= 1) return 'unknown';
+    const first = normalized[0];
+    const allEqual = normalized.every((v) => v === first);
+    return allEqual ? 'match' : 'mismatch';
   };
 
   const handleDownloadReport = () => {
@@ -314,7 +334,7 @@ const ComplexAudit: React.FC<ComplexAuditProps> = ({ onSelectForCalculator, onOp
       </div>
 
       {/* Правая часть: список документов и риски */}
-      <div className="w-full md:w-2/3 space-y-4">
+      <div className="w-full md:w-2/3 space-y-4 text-sm">
         {result ? (
           <>
             {/* Таблица документов */}
@@ -367,9 +387,9 @@ const ComplexAudit: React.FC<ComplexAuditProps> = ({ onSelectForCalculator, onOp
                 <h3 className="font-semibold text-sm">Глобальные риски по пакету</h3>
               </div>
               {result.globalIssues.length === 0 ? (
-                <p className="text-xs text-slate-400">Значимых глобальных несоответствий не найдено.</p>
+                <p className="text-sm text-slate-300">Значимых глобальных несоответствий не найдено.</p>
               ) : (
-                <ul className="space-y-2 text-xs">
+                <ul className="space-y-2 text-sm">
                   {result.globalIssues.map((gi, idx) => (
                     <li
                       key={idx}
@@ -381,18 +401,183 @@ const ComplexAudit: React.FC<ComplexAuditProps> = ({ onSelectForCalculator, onOp
                           {gi.severity}
                         </span>
                       </div>
-                      <p className="text-[11px] text-slate-300 mb-1">{gi.description}</p>
+                      <p className="text-sm text-slate-300 mb-1">{gi.description}</p>
                     </li>
                   ))}
                 </ul>
               )}
             </div>
 
+            {/* Сквозная сверка данных (матрица противоречий) */}
+            {result.documents.length > 1 && (
+              <div className="bg-[#111827] border border-[#1f2937] rounded-xl p-4">
+                <h3 className="font-semibold text-base mb-3">Сквозная сверка данных по комплекту</h3>
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+                  {/* Деньги (НМЦК) */}
+                  <div className="bg-[#020617] border border-slate-700 rounded-lg p-3">
+                    <div className="text-[11px] font-bold uppercase tracking-wide text-slate-400 mb-2">
+                      💸 Деньги (НМЦК)
+                    </div>
+                    {(() => {
+                      const values = result.documents.map(
+                        (doc) => (doc.financialSummary as any)?.nmck || doc.passport?.nmck,
+                      );
+                      const status = getConsistency(values);
+                      return (
+                        <div className="mb-2 text-[11px] font-semibold">
+                          {status === 'match' && (
+                            <span className="text-emerald-400">✅ Данные совпадают между файлами</span>
+                          )}
+                          {status === 'mismatch' && (
+                            <span className="text-red-400">❗ Разные значения НМЦК — нужна проверка</span>
+                          )}
+                          {status === 'unknown' && (
+                            <span className="text-slate-400">Недостаточно данных для сравнения</span>
+                          )}
+                        </div>
+                      );
+                    })()}
+                    {result.documents.map((doc, idx) => (
+                      <div
+                        key={doc.filename + idx}
+                        className="flex items-center justify-between text-xs py-1 border-b border-slate-800 last:border-0"
+                      >
+                        <span className="text-slate-400 truncate max-w-[60%]">{doc.filename}</span>
+                        <span className="font-semibold text-slate-100">
+                          {(doc.financialSummary as any)?.nmck || doc.passport?.nmck || '—'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Сроки исполнения */}
+                  <div className="bg-[#020617] border border-slate-700 rounded-lg p-3">
+                    <div className="text-[11px] font-bold uppercase tracking-wide text-slate-400 mb-2">
+                      ⏳ Сроки исполнения
+                    </div>
+                    {(() => {
+                      const values = result.documents.map(
+                        (doc) =>
+                          (doc.timelineSummary as any)?.deadlineExecution ||
+                          doc.passport?.deadlineExecution,
+                      );
+                      const status = getConsistency(values);
+                      return (
+                        <div className="mb-2 text-[11px] font-semibold">
+                          {status === 'match' && (
+                            <span className="text-emerald-400">✅ Сроки согласованы между документами</span>
+                          )}
+                          {status === 'mismatch' && (
+                            <span className="text-red-400">
+                              ❗ Расхождение в сроках — рекомендуется запрос разъяснений
+                            </span>
+                          )}
+                          {status === 'unknown' && (
+                            <span className="text-slate-400">Недостаточно данных для сравнения</span>
+                          )}
+                        </div>
+                      );
+                    })()}
+                    {result.documents.map((doc, idx) => (
+                      <div
+                        key={doc.filename + idx}
+                        className="flex items-center justify-between text-xs py-1 border-b border-slate-800 last:border-0"
+                      >
+                        <span className="text-slate-400 truncate max-w-[60%]">{doc.filename}</span>
+                        <span className="font-semibold text-slate-100">
+                          {(doc.timelineSummary as any)?.deadlineExecution ||
+                            doc.passport?.deadlineExecution ||
+                            '—'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Обеспечение */}
+                  <div className="bg-[#020617] border border-slate-700 rounded-lg p-3">
+                    <div className="text-[11px] font-bold uppercase tracking-wide text-slate-400 mb-2">
+                      🔒 Обеспечение
+                    </div>
+                    {(() => {
+                      const values = result.documents.map(
+                        (doc) =>
+                          (doc.financialSummary as any)?.contractSecurity ||
+                          doc.passport?.contractSecurity,
+                      );
+                      const status = getConsistency(values);
+                      return (
+                        <div className="mb-2 text-[11px] font-semibold">
+                          {status === 'match' && (
+                            <span className="text-emerald-400">✅ Условия обеспечения совпадают</span>
+                          )}
+                          {status === 'mismatch' && (
+                            <span className="text-red-400">
+                              ❗ Разные условия обеспечения — возможное противоречие
+                            </span>
+                          )}
+                          {status === 'unknown' && (
+                            <span className="text-slate-400">Недостаточно данных для сравнения</span>
+                          )}
+                        </div>
+                      );
+                    })()}
+                    {result.documents.map((doc, idx) => (
+                      <div
+                        key={doc.filename + idx}
+                        className="flex items-center justify-between text-xs py-1 border-b border-slate-800 last:border-0"
+                      >
+                        <span className="text-slate-400 truncate max-w-[60%]">{doc.filename}</span>
+                        <span className="font-semibold text-slate-100">
+                          {(doc.financialSummary as any)?.contractSecurity ||
+                            doc.passport?.contractSecurity ||
+                            '—'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Детали выбранного документа */}
             {selectedDoc && (
               <div className="bg-[#111827] border border-[#1f2937] rounded-xl p-4">
                 <h3 className="font-semibold text-sm mb-2">Детальный анализ: {selectedDoc.filename}</h3>
                 <p className="text-xs text-slate-300 mb-3">{selectedDoc.summary}</p>
+
+                {/* Сводка по 4 ключевым блокам: Деньги / Время / Барьеры / Ловушки */}
+                {selectedDoc.summaryBlocks && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-[11px] mb-4">
+                    {(['money', 'time', 'barriers', 'traps'] as const).map((key) => {
+                      const block = (selectedDoc.summaryBlocks as any)[key];
+                      if (!block) return null;
+                      const titleMap: Record<string, string> = {
+                        money: 'Деньги',
+                        time: 'Время',
+                        barriers: 'Барьеры',
+                        traps: 'Ловушки',
+                      };
+                      return (
+                        <div
+                          key={key}
+                          className={`rounded-lg border px-3 py-2 ${blockStatusColor(block.status)} flex flex-col gap-1`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="font-semibold">{titleMap[key]}</span>
+                            {block.status && (
+                              <span className="text-[10px] uppercase tracking-wide opacity-80">
+                                {block.status}
+                              </span>
+                            )}
+                          </div>
+                          {block.comment && (
+                            <p className="text-[10px] leading-snug text-slate-200">{block.comment}</p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs mb-3">
                   <div>
@@ -596,6 +781,54 @@ const ComplexAudit: React.FC<ComplexAuditProps> = ({ onSelectForCalculator, onOp
                             <li key={idx}>{act.text}</li>
                           ))}
                       </ul>
+                    </div>
+                  )}
+
+                  {/* Структурированные ответы на 25 вопросов */}
+                  {selectedDoc.structuredAnswers && Object.keys(selectedDoc.structuredAnswers).length > 0 && (
+                    <div className="mt-4 border border-[#1f2937] rounded-lg bg-slate-900/40 p-3">
+                      <div className="flex items-center gap-2 mb-3">
+                        <FileSpreadsheet size={14} className="text-[#00d4ff]" />
+                        <span className="text-xs font-semibold">Структурированный анализ по чек-листу</span>
+                      </div>
+                      <div className="space-y-2 text-xs max-h-96 overflow-y-auto">
+                        {[
+                          { key: 'customer', label: '1. Заказчик (ИНН, ОГРН, местонахождение)' },
+                          { key: 'subject', label: '2. Предмет закупки' },
+                          { key: 'nmck', label: '3. Начальная (максимальная) цена контракта' },
+                          { key: 'applicationDeadline', label: '4. Сроки подачи заявок' },
+                          { key: 'executionDeadline', label: '5. Сроки исполнения контракта' },
+                          { key: 'participantRequirements', label: '6. Требования к участникам' },
+                          { key: 'securityAmounts', label: '7. Обеспечительные суммы' },
+                          { key: 'paymentTerms', label: '8. Условия оплаты' },
+                          { key: 'evaluationCriteria', label: '9. Критерии оценки заявок' },
+                          { key: 'contradictions', label: '10. Противоречия и неоднозначности' },
+                          { key: 'penalties', label: '11. Штрафы и санкции' },
+                          { key: 'guarantees', label: '12. Гарантии и сервисное обслуживание' },
+                          { key: 'additionalRequirements', label: '13. Дополнительные требования' },
+                          { key: 'tenderRisks', label: '14. Риски изменения/отмены тендера' },
+                          { key: 'documentationRequirements', label: '15. Требования по оформлению документов' },
+                          { key: 'financialRequirements', label: '16. Требования к финансовому положению' },
+                          { key: 'confidentiality', label: '17. Условия конфиденциальности' },
+                          { key: 'customerHistory', label: '18. История заказчика' },
+                          { key: 'subcontractingLimits', label: '19. Ограничения по субподряду' },
+                          { key: 'conflictsOfInterest', label: '20. Конфликты интересов' },
+                          { key: 'discriminationSigns', label: '21. Признаки дискриминации' },
+                          { key: 'terminationConditions', label: '22. Условия расторжения и изменения' },
+                          { key: 'competitionLevel', label: '23. Уровень конкуренции' },
+                          { key: 'insuranceRequirements', label: '24. Требования к страхованию' },
+                          { key: 'additionalRisks', label: '25. Дополнительные риски и особенности' },
+                        ].map(({ key, label }) => {
+                          const answer = selectedDoc.structuredAnswers?.[key as keyof typeof selectedDoc.structuredAnswers];
+                          if (!answer || answer === 'Не указано' || answer === 'Не найдено') return null;
+                          return (
+                            <div key={key} className="border border-slate-700/80 rounded-md p-2 bg-slate-950/40">
+                              <div className="text-[10px] font-semibold text-slate-400 mb-1">{label}</div>
+                              <div className="text-[11px] text-slate-200 leading-relaxed whitespace-pre-line">{answer}</div>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
                   )}
 

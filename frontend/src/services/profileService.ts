@@ -25,10 +25,20 @@ export interface UsageInfo {
   packages_remaining: number; // -1 для безлимита
 }
 
+export interface CompanyProfileInfo {
+  has_sro: boolean;
+  has_fstek: boolean;
+  has_fsb: boolean;
+  has_mchs: boolean;
+  experience_level?: string;
+  tax_system?: string;
+}
+
 export interface ProfileInfo {
   user: AuthUser;
   tariff: TariffInfo | null;
   usage: UsageInfo | null;
+  company_profile?: CompanyProfileInfo | null;
 }
 
 export interface PaymentInfo {
@@ -53,6 +63,28 @@ export const getProfile = async (): Promise<ProfileInfo> => {
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({ detail: 'Ошибка загрузки профиля' }));
     throw new Error(errorData.detail || `Ошибка загрузки профиля: ${response.status}`);
+  }
+
+  const data: ProfileInfo = await response.json();
+  return data;
+};
+
+/**
+ * Обновление профиля компании (СРО, лицензии, опыт и т.п.)
+ */
+export const updateCompanyProfile = async (profile: CompanyProfileInfo): Promise<ProfileInfo> => {
+  const response = await fetch(`${API_URL}/profile/company`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(profile),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ detail: 'Не удалось сохранить профиль компании' }));
+    throw new Error(errorData.detail || `Ошибка при сохранении профиля: ${response.status}`);
   }
 
   const data: ProfileInfo = await response.json();

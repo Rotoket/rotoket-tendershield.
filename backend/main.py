@@ -27,9 +27,9 @@ TRIAL_IP_WINDOW_DAYS = 30           # считаем за последние 30 
 # --- КОНФИГУРАЦИЯ МОДЕЛЕЙ ДЛЯ FAILOVER ---
 # Список моделей по приоритету: от быстрой к надежной
 OLLAMA_MODELS = [
-    "qwen2.5:0.5b",  # Основная (быстрая)
-    "llama3:8b",     # Резерв 1 (умная)
-    "mistral:7b",    # Резерв 2 (надежная)
+    "qwen2.5-coder:7b",      # Основная (установлена, хорошее качество)
+    "mistral:7b-instruct-q4_K_M",  # Резерв 1 (установлена, надежная)
+    "qwen2.5:0.5b",          # Резерв 2 (если установлена)
 ]
 
 # --- ИМПОРТЫ ---
@@ -62,12 +62,106 @@ from auth import (
     get_user_by_email
 )
 import schemas
-from schemas import UserCreate, UserResponse, UserLogin, Token, AnalysisResponse
+from schemas import UserCreate, UserResponse, UserLogin, Token, AnalysisResponse, CompanyProfile
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 from fastapi import Depends, status
 from typing import Optional
 from contextlib import asynccontextmanager
+
+
+def _build_profile_response(current_user: User, db: Session) -> "schemas.ProfileResponse":
+    """Формирует ответ профиля пользователя с учётом тарифа, использования и триала."""
+    # Получаем тариф
+    tariff = None
+    if current_user.tariff_id:
+        tariff = db.query(Tariff).filter(Tariff.id == current_user.tariff_id).first()
+    
+    # Получаем использование за текущий месяц
+    now = datetime.utcnow()
+    usage_record = db.query(Usage).filter(
+        Usage.user_id == current_user.id,
+        Usage.year == now.year,
+        Usage.month == now.month
+    ).first()
+    
+    # Если записи использования нет, создаем её
+    if not usage_record:
+        usage_record = Usage(
+            user_id=current_user.id,
+            year=now.year,
+            month=now.month,
+            analyses_count=0,
+            packages_count=0
+        )
+        db.add(usage_record)
+        db.commit()
+        db.refresh(usage_record)
+    
+    # Формируем ответ по использованию
+    analyses_count = usage_record.analyses_count
+    packages_count = usage_record.packages_count
+    analyses_limit = tariff.analyses_limit if tariff else 0
+    package_limit = tariff.package_limit if tariff else 0
+    
+    usage_response = schemas.UsageResponse(
+        analyses_count=analyses_count,
+        packages_count=packages_count,
+        analyses_limit=analyses_limit,
+        package_limit=package_limit,
+        analyses_remaining=max(0, analyses_limit - analyses_count) if analyses_limit > 0 else -1,
+        packages_remaining=max(0, package_limit - packages_count) if package_limit > 0 else -1
+    )
+    
+    # Информация о тарифе
+    tariff_response = None
+    if tariff:
+        tariff_response = schemas.TariffResponse(
+            id=tariff.id,
+            name=tariff.name,
+            price=tariff.price,
+            analyses_limit=tariff.analyses_limit,
+            package_limit=tariff.package_limit,
+            features=tariff.features
+        )
+    
+    # Информация о триале
+    trial_info = None
+    if current_user.plan_type == "trial":
+        trial_info = schemas.TrialInfo(
+            is_active=current_user.is_active and current_user.is_trial_active(),
+            remaining_days=current_user.get_remaining_trial_days(),
+            trial_start=current_user.trial_start,
+            trial_end=current_user.trial_end
+        )
+    
+    # Профиль компании (для персонализации анализа)
+    company_profile = None
+    try:
+        from sqlalchemy import inspect
+        inspector = inspect(engine)
+        columns = [col['name'] for col in inspector.get_columns('users')]
+        has_profile_fields = any(col in columns for col in ['has_sro', 'has_fstek', 'has_fsb', 'has_mchs', 'experience_level', 'tax_system'])
+        if has_profile_fields:
+            company_profile = schemas.CompanyProfile(
+                has_sro=getattr(current_user, 'has_sro', False),
+                has_fstek=getattr(current_user, 'has_fstek', False),
+                has_fsb=getattr(current_user, 'has_fsb', False),
+                has_mchs=getattr(current_user, 'has_mchs', False),
+                experience_level=getattr(current_user, 'experience_level', None),
+                tax_system=getattr(current_user, 'tax_system', None),
+            )
+    except Exception as e:
+        logger.warning(f"Не удалось получить профиль компании пользователя: {e}")
+        company_profile = None
+    
+    return schemas.ProfileResponse(
+        user=current_user,
+        tariff=tariff_response,
+        usage=usage_response,
+        trial=trial_info,
+        company_profile=company_profile,
+    )
 
 # Инициализация БД при старте
 @asynccontextmanager
@@ -352,7 +446,21 @@ async def register_user(
             )
         
         # Создаем нового пользователя с триалом
-        hashed_password = get_password_hash(user_in.password)
+        # bcrypt поддерживает пароли до 72 байт, поэтому аккуратно обрезаем слишком длинные пароли
+        raw_password = (user_in.password or "").strip()
+        if len(raw_password.encode("utf-8")) > 72:
+            logger.warning(
+                "Пароль при регистрации длиннее 72 байт, выполняем безопасное усечение до допустимой длины"
+            )
+            # Усечение по байтам, а не по символам, чтобы не порвать UTF‑8
+            raw_bytes = raw_password.encode("utf-8")[:72]
+            try:
+                raw_password = raw_bytes.decode("utf-8", errors="ignore")
+            except Exception:
+                # В маловероятном случае проблем с декодированием просто берём ASCII-часть
+                raw_password = raw_bytes.decode("utf-8", errors="ignore")
+
+        hashed_password = get_password_hash(raw_password)
         trial_end = now + timedelta(days=7)  # 7 дней триала
         
         # Проверяем, есть ли поля триалов в таблице (для обратной совместимости)
@@ -469,77 +577,51 @@ async def get_profile(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """Получение полной информации о профиле пользователя (тариф и использование)"""
-    from datetime import datetime
-    
-    # Получаем тариф
-    tariff = None
-    if current_user.tariff_id:
-        tariff = db.query(Tariff).filter(Tariff.id == current_user.tariff_id).first()
-    
-    # Получаем использование за текущий месяц
-    now = datetime.utcnow()
-    usage_record = db.query(Usage).filter(
-        Usage.user_id == current_user.id,
-        Usage.year == now.year,
-        Usage.month == now.month
-    ).first()
-    
-    # Если записи использования нет, создаем её
-    if not usage_record:
-        usage_record = Usage(
-            user_id=current_user.id,
-            year=now.year,
-            month=now.month,
-            analyses_count=0,
-            packages_count=0
-        )
-        db.add(usage_record)
-        db.commit()
-        db.refresh(usage_record)
-    
-    # Формируем ответ
-    analyses_count = usage_record.analyses_count
-    packages_count = usage_record.packages_count
-    analyses_limit = tariff.analyses_limit if tariff else 0
-    package_limit = tariff.package_limit if tariff else 0
-    
-    usage_response = schemas.UsageResponse(
-        analyses_count=analyses_count,
-        packages_count=packages_count,
-        analyses_limit=analyses_limit,
-        package_limit=package_limit,
-        analyses_remaining=max(0, analyses_limit - analyses_count) if analyses_limit > 0 else -1,  # -1 для безлимита
-        packages_remaining=max(0, package_limit - packages_count) if package_limit > 0 else -1
-    )
-    
-    tariff_response = None
-    if tariff:
-        tariff_response = schemas.TariffResponse(
-            id=tariff.id,
-            name=tariff.name,
-            price=tariff.price,
-            analyses_limit=tariff.analyses_limit,
-            package_limit=tariff.package_limit,
-            features=tariff.features
-        )
-    
-    # Информация о триале
-    trial_info = None
-    if current_user.plan_type == "trial":
-        trial_info = schemas.TrialInfo(
-            is_active=current_user.is_trial_active(),
-            remaining_days=current_user.get_remaining_trial_days(),
-            trial_start=current_user.trial_start,
-            trial_end=current_user.trial_end
-        )
-    
-    return schemas.ProfileResponse(
-        user=current_user,
-        tariff=tariff_response,
-        usage=usage_response,
-        trial=trial_info
-    )
+    """Получение полной информации о профиле пользователя (тариф, использование, триал, профиль компании)"""
+    return _build_profile_response(current_user, db)
+
+
+@app.put("/api/profile/company", response_model=schemas.ProfileResponse)
+async def update_company_profile(
+    profile_in: CompanyProfile,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Обновление профиля компании (лицензии, опыт, налоговый режим).
+    Для обратной совместимости сначала проверяем наличие соответствующих полей в БД.
+    """
+    try:
+        from sqlalchemy import inspect
+        inspector = inspect(engine)
+        columns = [col['name'] for col in inspector.get_columns('users')]
+        required_columns = ['has_sro', 'has_fstek', 'has_fsb', 'has_mchs', 'experience_level', 'tax_system']
+        has_profile_fields = all(col in columns for col in required_columns)
+        if not has_profile_fields:
+            logger.warning("Поля профиля компании отсутствуют в таблице users. Запустите миграцию для добавления этих полей.")
+            raise HTTPException(
+                status_code=status.HTTP_501_NOT_IMPLEMENTED,
+                detail="Поля профиля компании ещё не настроены. Обратитесь к администратору системы.",
+            )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Ошибка проверки структуры БД для профиля компании: {e}")
+        raise HTTPException(status_code=500, detail="Ошибка при сохранении профиля компании")
+
+    # Обновляем поля пользователя
+    current_user.has_sro = profile_in.has_sro
+    current_user.has_fstek = profile_in.has_fstek
+    current_user.has_fsb = profile_in.has_fsb
+    current_user.has_mchs = profile_in.has_mchs
+    current_user.experience_level = profile_in.experience_level
+    current_user.tax_system = profile_in.tax_system
+
+    db.add(current_user)
+    db.commit()
+    db.refresh(current_user)
+
+    return _build_profile_response(current_user, db)
 
 
 @app.get("/api/tariffs", response_model=List[schemas.TariffResponse])
@@ -1050,9 +1132,9 @@ def _safe_ollama_invoke(prompt: str, format_json: bool = True) -> str:
     Безопасный вызов Ollama с каскадным переключением между моделями.
     
     Пытается использовать модели по приоритету:
-    1. qwen2.5:0.5b (быстрая)
-    2. llama3:8b (умная)
-    3. mistral:7b (надежная)
+    1. qwen2.5-coder:7b (основная, хорошее качество)
+    2. mistral:7b-instruct-q4_K_M (резерв, надежная)
+    3. qwen2.5:0.5b (резерв, если установлена)
     
     Args:
         prompt: Промпт для отправки в LLM
@@ -1076,7 +1158,7 @@ def _safe_ollama_invoke(prompt: str, format_json: bool = True) -> str:
                 "model": model_name,
                 "base_url": settings.OLLAMA_BASE_URL,
                 "temperature": 0.1,  # Низкая температура для стабильности
-                "timeout": 300,  # 5 минут таймаут
+                "timeout": 180,  # 3 минуты таймаут (уменьшено для быстрой обратной связи)
             }
             
             # Добавляем формат JSON только если нужно
@@ -1178,7 +1260,7 @@ async def analyze_single_file(temp_path: str, filename: str, industry: str) -> d
         elif ext in (".xls", ".xlsx"):
             # Excel-файлы: конвертируем содержимое ячеек в плоский текст
             try:
-                from openpyxl import load_wórkbook
+                from openpyxl import load_workbook
                 wb = load_workbook(temp_path, data_only=True)
                 chunks = []
                 for ws in wb.worksheets:
@@ -1281,85 +1363,97 @@ async def analyze_single_file(temp_path: str, filename: str, industry: str) -> d
 
     # 3b. МЕГА-ПРОМПТ (Паспорт, Риски, Спецификация + RAG-контекст)
     prompt = f"""
-    Ты — Главный Эксперт Тендерного Отдела. Твоя задача — полный аудит документа.
+    Ты — эксперт по тендерам. Проанализируй документ и ответь на вопросы. Пиши для директора, не для юриста.
     Специфика: {industry_context}
     
     {industry_checks}
 
-    {("Выдержки из нормативных актов для учёта при анализе:\n" + law_context_block) if law_context_block else ""}
+    {("Выдержки из законов:\n" + law_context_block[:2000]) if law_context_block else ""}
 
-    ВЕРНИ JSON СТРОГО ТАКОГО ФОРМАТА (НЕ ДОБАВЛЯЙ ПОЛЕЙ СВЕРХ УКАЗАННЫХ):
+    ОТВЕТЬ НА ВОПРОСЫ (если нет данных — "Не указано"):
+    1. Заказчик (ИНН, ОГРН, адрес)
+    2. Предмет закупки
+    3. НМЦК (цена)
+    4. Сроки подачи заявок
+    5. Сроки исполнения
+    6. Требования к участникам (лицензии, опыт)
+    7. Обеспечения (заявка/контракт)
+    8. Условия оплаты
+    9. Критерии оценки
+    10. Противоречия в документах
+    11. Штрафы и санкции
+    12. Гарантии и сервис
+    13. Доп. требования (поставка, монтаж)
+    14. Риски отмены/изменения
+    15. Требования к документам
+    16. Финансовые требования
+    17. Конфиденциальность
+    18. История заказчика (если есть)
+    19. Ограничения по субподряду
+    20. Конфликты интересов
+    21. Признаки дискриминации
+    22. Условия расторжения
+    23. Уровень конкуренции
+    24. Страхование
+    25. Доп. риски участия
+
+    ВЕРНИ JSON (только JSON, без комментариев):
     {{
-        "summary": "Краткая суть закупки (1-2 предложения)",
-        "score": (Оценка безопасности 0-100. Штрафы >1% или размытое ТЗ = низкий балл),
-        "passport": {{
-            "nmck": "Цена контракта (число + валюта)",
-            "region": "Место поставки/работ",
-            "fz": "44-ФЗ или 223-ФЗ",
-            "deadlineApp": "Дата подачи заявки",
-            "guarantee": "Обеспечение заявки/контракта"
-        }},
-        "issues": [
-            {{
-                "title": "Название риска (например: Незаконный штраф)",
-                "severity": "HIGH" | "MEDIUM" | "LOW",
-                "description": "Пояснение, почему это опасно. Ссылка на закон.",
-                "quote": "Точная цитата из текста документа"
-            }}
-        ],
-        "specs": [
-            {{
-                "name": "Наименование товара/работы",
-                "qty": "Количество (шт, кг, м2)",
-                "details": "Ключевые характеристики (ГОСТ, размеры)"
-            }}
-        ],
-        "redFlags": [
-            {{
-                "code": "IT_BRAND_ONLY" | "TIME_UNREAL" | "PRICE_DUMPING" | "MIXED_LOT" | "OTHER",
-                "title": "Краткое название красного флага",
-                "severity": "HIGH" | "MEDIUM" | "LOW",
-                "lawReference": "Статья закона / практика ФАС (если есть)",
-                "explanation": "Что именно нарушено или почему это опасно",
-                "quote": "Ключевая цитата из документа"
-            }}
-        ],
-        "financialSummary": {{
-            "nmck": "Строка с НМЦК",
-            "estimatedCost": "Оценочная себестоимость (если удаётся понять)",
-            "marginComment": "Краткий комментарий по марже и финансовым рискам"
-        }},
-        "timelineSummary": {{
-            "deadlineApp": "Крайний срок подачи заявки",
-            "deadlineExecution": "Срок исполнения контракта (если есть)",
-            "timelineRisk": "Краткий комментарий: реалистичные/сомнительные/нереальные сроки"
-        }},
-        "actions": [
-            {{
-                "type": "ASK_CLARIFICATION" | "FILE_FAS_COMPLAINT" | "PARTICIPATE" | "SKIP",
-                "priority": 1,
-                "text": "Конкретное рекомендованное действие в 1-2 предложениях"
-            }}
-        ]
+        "summary": "Суть закупки (1-2 предложения)",
+        "score": число_0_100,
+        "passport": {{"nmck": "цена", "region": "место", "fz": "44-ФЗ/223-ФЗ", "deadlineApp": "дата", "bidSecurity": "обеспечение заявки", "contractSecurity": "обеспечение контракта"}},
+        "issues": [{{"title": "риск", "severity": "HIGH/MEDIUM/LOW", "description": "почему опасно", "quote": "цитата", "lawReference": "статья"}}],
+        "specs": [{{"name": "товар", "qty": "количество", "details": "характеристики"}}],
+        "redFlags": [{{"code": "IT_BRAND_ONLY/TIME_UNREAL/OTHER", "title": "название", "severity": "HIGH/MEDIUM/LOW", "lawReference": "статья", "explanation": "что нарушено", "quote": "цитата"}}],
+        "financialSummary": {{"nmck": "НМЦК", "advance": "аванс", "bidSecurity": "обеспечение заявки", "contractSecurity": "обеспечение контракта", "paymentTerms": "условия оплаты"}},
+        "timelineSummary": {{"deadlineApp": "срок подачи", "deadlineExecution": "срок исполнения", "timelineRisk": "оценка сроков"}},
+        "participantRequirements": {{"licenses": ["лицензии"], "experienceRequired": "требования к опыту", "overallBarrier": "HIGH/MEDIUM/LOW"}},
+        "summaryBlocks": {{"money": {{"status": "GREEN/YELLOW/RED", "comment": "вывод"}}, "time": {{"status": "GREEN/YELLOW/RED", "comment": "вывод"}}, "barriers": {{"status": "GREEN/YELLOW/RED", "comment": "вывод"}}, "traps": {{"status": "GREEN/YELLOW/RED", "comment": "вывод"}}}},
+        "actions": [{{"type": "ASK_CLARIFICATION/PARTICIPATE/SKIP", "priority": 1, "text": "действие"}}],
+        "structuredAnswers": {{
+            "customer": "ответ на вопрос 1",
+            "subject": "ответ на вопрос 2",
+            "nmck": "ответ на вопрос 3",
+            "applicationDeadline": "ответ на вопрос 4",
+            "executionDeadline": "ответ на вопрос 5",
+            "participantRequirements": "ответ на вопрос 6",
+            "securityAmounts": "ответ на вопрос 7",
+            "paymentTerms": "ответ на вопрос 8",
+            "evaluationCriteria": "ответ на вопрос 9",
+            "contradictions": "ответ на вопрос 10",
+            "penalties": "ответ на вопрос 11",
+            "guarantees": "ответ на вопрос 12",
+            "additionalRequirements": "ответ на вопрос 13",
+            "tenderRisks": "ответ на вопрос 14",
+            "documentationRequirements": "ответ на вопрос 15",
+            "financialRequirements": "ответ на вопрос 16",
+            "confidentiality": "ответ на вопрос 17",
+            "customerHistory": "ответ на вопрос 18",
+            "subcontractingLimits": "ответ на вопрос 19",
+            "conflictsOfInterest": "ответ на вопрос 20",
+            "discriminationSigns": "ответ на вопрос 21",
+            "terminationConditions": "ответ на вопрос 22",
+            "competitionLevel": "ответ на вопрос 23",
+            "insuranceRequirements": "ответ на вопрос 24",
+            "additionalRisks": "ответ на вопрос 25"
+        }}
     }}
 
-    ВАЖНО:
-    - Не нарушай формат JSON.
-    - Не добавляй комментарии вне JSON.
-    - В поле 'specs' вытащи до 15 ключевых позиций ТЗ (Таблица товаров).
-
-    Текст документа:
-    {text[:18000]}
+    Текст документа (первые 15000 символов):
+    {text[:15000]}
     """
 
-    logger.info("Отправка в Ollama с failover...")
+    logger.info(f"Отправка в Ollama с failover... (длина промпта: {len(prompt)} символов)")
+    import time
+    start_time = time.time()
     response_json = None
     try:
         # Используем безопасный вызов с переключением моделей
         response_json = _safe_ollama_invoke(prompt)
+        elapsed = time.time() - start_time
         if not response_json:
             raise ValueError("Пустой ответ от Ollama")
-        logger.info(f"✅ Получен ответ от Ollama (длина: {len(response_json)} символов)")
+        logger.info(f"✅ Получен ответ от Ollama за {elapsed:.1f}с (длина: {len(response_json)} символов)")
         logger.debug(f"Первые 200 символов ответа: {response_json[:200]}")
     except HTTPException:
         # Пробрасываем HTTPException как есть (это наша ошибка 503)
@@ -1467,6 +1561,11 @@ async def analyze_single_file(temp_path: str, filename: str, industry: str) -> d
     # Финальный ответ
     issues: List[dict] = list(ai_data.get("issues", []))
 
+    # Нормализация ключей law_reference -> lawReference для единообразия
+    for issue in issues:
+        if "law_reference" in issue and "lawReference" not in issue:
+            issue["lawReference"] = issue.get("law_reference")
+
     # Отраслевые эвристики: усиливаем список рисков для конкретных сфер
     if industry == "IT":
         issues = enrich_it_specific_issues(text, issues)
@@ -1523,6 +1622,197 @@ async def analyze_single_file(temp_path: str, filename: str, industry: str) -> d
     except Exception as spec_error:
         logger.error(f"Ошибка специализированных анализаторов: {spec_error}")
 
+    # 5b. Summary-блоки: если LLM их не вернул, формируем упрощённую версию на основе score
+    default_block_status = "GREEN"
+    if score < 40:
+        default_block_status = "RED"
+    elif score < 80:
+        default_block_status = "YELLOW"
+
+    summary_blocks = ai_data.get("summaryBlocks") or {
+        "money": {
+            "status": default_block_status,
+            "comment": "Общая оценка финансовых условий по документу",
+        },
+        "time": {
+            "status": default_block_status,
+            "comment": "Общая оценка сроков и дедлайнов по документу",
+        },
+        "barriers": {
+            "status": default_block_status,
+            "comment": "Общая оценка требований к участнику (лицензии, опыт, нацрежим)",
+        },
+        "traps": {
+            "status": default_block_status,
+            "comment": "Общая оценка скрытых ловушек и рисков в ТЗ и договоре",
+        },
+    }
+
+    participant_requirements = ai_data.get("participantRequirements", {})
+
+    # --- 5c. Deal Breakers (стоп-факторы) ---
+    def extract_deal_breakers(
+        issues_list: List[dict],
+        red_flags_list: List[dict],
+        participant_req: dict,
+        score_value: int,
+    ) -> List[dict]:
+        """
+        Формирует список dealBreakers на основе:
+        - красных флагов HIGH-серьёзности,
+        - экстремально низкого score,
+        - барьеров участия.
+        Формат элемента:
+        {
+            "title": str,
+            "quote": str,
+            "essence": str,
+            "status": str,
+            "lawReference": Optional[str],
+            "action": {
+                "type": "SKIP" | "FILE_FAS_COMPLAINT" | "ASK_CLARIFICATION",
+                "buttonLabel": str,
+                "justification": str,
+            }
+        }
+        """
+        deal_breakers: List[dict] = []
+
+        # 1. Красные флаги высокой серьёзности
+        for rf in red_flags_list:
+            if str(rf.get("severity", "")).upper() == "HIGH":
+                title = rf.get("title") or "Критический красный флаг"
+                law_ref = rf.get("lawReference")
+                quote = rf.get("quote") or ""
+                explanation = rf.get("explanation") or ""
+                status = f"Высокий правовой риск{f' ({law_ref})' if law_ref else ''}"
+                action_type = "SKIP"
+                button_label = "🟥 НЕ УЧАСТВОВАТЬ"
+                justification = "Риск слишком высок по сравнению с потенциальной выгодой"
+                deal_breakers.append(
+                    {
+                        "title": title,
+                        "quote": quote,
+                        "essence": explanation or "Критический риск, который может привести к серьёзным потерям.",
+                        "status": status,
+                        "lawReference": law_ref,
+                        "action": {
+                            "type": action_type,
+                            "buttonLabel": button_label,
+                            "justification": justification,
+                        },
+                    }
+                )
+
+        # 2. Очень низкий score (< 30) как общий стоп-фактор
+        if score_value < 30:
+            deal_breakers.append(
+                {
+                    "title": "Очень высокий суммарный риск по тендеру",
+                    "quote": "",
+                    "essence": "Индекс безопасности ниже 30 из 100. В документе много серьёзных рисков по деньгам, срокам и требованиям.",
+                    "status": "STOP",
+                    "lawReference": None,
+                    "action": {
+                        "type": "SKIP",
+                        "buttonLabel": "🟥 НЕ УЧАСТВОВАТЬ",
+                        "justification": "Слишком большое количество критических рисков по сравнению с потенциальной выгодой.",
+                    },
+                }
+            )
+
+        # 3. Барьеры участия (например, высокий overallBarrier)
+        overall_barrier = str(participant_req.get("overallBarrier", "")).upper()
+        if overall_barrier == "HIGH":
+            deal_breakers.append(
+                {
+                    "title": "Высокие барьеры для участия",
+                    "quote": "",
+                    "essence": "Требуются лицензии, опыт или статус, которые трудно или невозможно быстро получить. Участие может быть формально невозможно или сильно рискованно.",
+                    "status": "HIGH BARRIER",
+                    "lawReference": None,
+                    "action": {
+                        "type": "ASK_CLARIFICATION",
+                        "buttonLabel": "🔵 Запросить разъяснения",
+                        "justification": "Нужно уточнить у заказчика, допускается ли участие без всех перечисленных требований.",
+                    },
+                }
+            )
+
+        # Ограничиваем список 5 элементами, чтобы не перегружать интерфейс
+        if len(deal_breakers) > 5:
+            deal_breakers = deal_breakers[:5]
+
+        return deal_breakers
+
+    red_flags_list = list(ai_data.get("redFlags", []))
+    deal_breakers = extract_deal_breakers(issues, red_flags_list, participant_requirements, score)
+
+    # --- 5d. Финансовый удар в рублях (расширение financialSummary) ---
+    financial_summary = ai_data.get("financialSummary", {}) or {}
+    try:
+        # Пытаемся извлечь НМЦК как число из строки
+        nmck_raw = str(final_nmck or "").replace(" ", "").replace("₽", "").replace(",", ".")
+        nmck_value = None
+        for token in nmck_raw.split():
+            try:
+                nmck_value = float(token)
+                break
+            except ValueError:
+                continue
+
+        # Простейшие эвристики: если в тексте есть штраф "0.1% в день" или похожие формулировки
+        text_lower = text.lower()
+        daily_penalty_percent = 0.0
+        if "% в день" in text_lower or "%/день" in text_lower:
+            # Ищем число перед "% в день"
+            import re
+            m = re.search(r"(\d+[.,]?\d*)\s*% ?в ?день", text_lower)
+            if not m:
+                m = re.search(r"(\d+[.,]?\d*)\s*%/?день", text_lower)
+            if m:
+                try:
+                    daily_penalty_percent = float(m.group(1).replace(",", "."))
+                except ValueError:
+                    daily_penalty_percent = 0.0
+
+        penalty_risk_rubles = None
+        if nmck_value and daily_penalty_percent > 0:
+            penalty_risk_rubles = nmck_value * daily_penalty_percent / 100.0
+
+        # Кассовый разрыв — грубая эвристика: ищем упоминание 30/60 дней
+        working_capital_needed = None
+        if nmck_value:
+            if "30 дней" in text_lower:
+                working_capital_needed = nmck_value * 0.3
+            elif "60 дней" in text_lower:
+                working_capital_needed = nmck_value * 0.6
+
+        guarantee_amount = None
+        guarantee_text = str(financial_summary.get("contractSecurity") or ai_data.get("passport", {}).get("contractSecurity") or "")
+        if "%" in guarantee_text and nmck_value:
+            import re
+            gm = re.search(r"(\d+[.,]?\d*)\s*%", guarantee_text)
+            if gm:
+                try:
+                    perc = float(gm.group(1).replace(",", "."))
+                    guarantee_amount = nmck_value * perc / 100.0
+                except ValueError:
+                    guarantee_amount = None
+
+        # Формируем человеко-понятные строки
+        def fmt_rub(v: float) -> str:
+            return f"{int(v):,} ₽".replace(",", " ")
+
+        if penalty_risk_rubles is not None:
+            financial_summary["penaltyRiskRubles"] = fmt_rub(penalty_risk_rubles)
+        if working_capital_needed is not None:
+            financial_summary["workingCapitalNeeded"] = fmt_rub(working_capital_needed)
+        if guarantee_amount is not None:
+            financial_summary["guaranteeAmount"] = fmt_rub(guarantee_amount)
+    except Exception as fin_err:
+        logger.warning(f"Не удалось оценить финансовый удар в рублях: {fin_err}")
+
     result = {
         "score": score,
         "summary": ai_data.get("summary", "Нет описания"),
@@ -1533,13 +1823,19 @@ async def analyze_single_file(temp_path: str, filename: str, industry: str) -> d
             "fz": ai_data.get("passport", {}).get("fz", "44-ФЗ"),
             "deadlineApp": ai_data.get("passport", {}).get("deadlineApp", extract_dates_regex(text[:3000])),
             "guarantee": ai_data.get("passport", {}).get("guarantee", "Не указано"),
+            "bidSecurity": ai_data.get("passport", {}).get("bidSecurity"),
+            "contractSecurity": ai_data.get("passport", {}).get("contractSecurity"),
         },
         "issues": issues,
         "specs": ai_data.get("specs", []),  # <-- спецификация
-        "redFlags": ai_data.get("redFlags", []),
-        "financialSummary": ai_data.get("financialSummary", {}),
+        "redFlags": red_flags_list,
+        "financialSummary": financial_summary,
         "timelineSummary": ai_data.get("timelineSummary", {}),
+        "participantRequirements": participant_requirements,
+        "summaryBlocks": summary_blocks,
         "actions": ai_data.get("actions", []),
+        "dealBreakers": deal_breakers,
+        "structuredAnswers": ai_data.get("structuredAnswers", {}),  # <-- структурированные ответы на 25 вопросов
     }
 
     logger.info(

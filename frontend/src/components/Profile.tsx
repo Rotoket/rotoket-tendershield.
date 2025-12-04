@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { User } from '../types';
-import { CreditCard, Users, Building2, Zap, FileText, Moon, Sun, Loader2, Star } from 'lucide-react';
-import { getProfile, getTariffs, createPayment, type ProfileInfo, type TariffInfo, type UsageInfo, type PaymentInfo } from '../services/profileService';
+import { CreditCard, Users, Building2, Zap, FileText, Moon, Sun, Loader2, Star, ShieldCheck } from 'lucide-react';
+import { getProfile, getTariffs, createPayment, updateCompanyProfile, type ProfileInfo, type TariffInfo, type UsageInfo, type PaymentInfo, type CompanyProfileInfo } from '../services/profileService';
 
 interface ProfileProps {
     user: User | null;
@@ -15,6 +15,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
     const [tariffs, setTariffs] = useState<TariffInfo[]>([]);
     const [isCreatingPayment, setIsCreatingPayment] = useState(false);
     const [paymentError, setPaymentError] = useState<string | null>(null);
+    const [isSavingCompanyProfile, setIsSavingCompanyProfile] = useState(false);
     const [orgForm, setOrgForm] = useState({
         name: user?.company || '',
         inn: '7701234567',
@@ -22,6 +23,15 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
         address: 'г. Москва, ул. Тверская, д. 1',
         director: 'Иванов Иван Иванович',
         email: user?.email || 'tender@vektor-ooo.ru'
+    });
+
+    const [companyProfile, setCompanyProfile] = useState<CompanyProfileInfo>({
+        has_sro: false,
+        has_fstek: false,
+        has_fsb: false,
+        has_mchs: false,
+        experience_level: undefined,
+        tax_system: undefined,
     });
 
     useEffect(() => {
@@ -41,6 +51,18 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                     name: data.user.company || prev.name,
                     email: data.user.email || prev.email
                 }));
+
+                // Загружаем профиль компании, если есть
+                if (data.company_profile) {
+                    setCompanyProfile({
+                        has_sro: data.company_profile.has_sro,
+                        has_fstek: data.company_profile.has_fstek,
+                        has_fsb: data.company_profile.has_fsb,
+                        has_mchs: data.company_profile.has_mchs,
+                        experience_level: data.company_profile.experience_level,
+                        tax_system: data.company_profile.tax_system,
+                    });
+                }
             } catch (err) {
                 setError(err instanceof Error ? err.message : 'Ошибка загрузки профиля');
                 console.error('[Profile Error]', err);
@@ -74,6 +96,25 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
             setPaymentError(err instanceof Error ? err.message : 'Ошибка создания платежа');
         } finally {
             setIsCreatingPayment(false);
+        }
+    };
+
+    const handleCompanyProfileChange = (field: keyof CompanyProfileInfo, value: boolean | string | undefined) => {
+        setCompanyProfile(prev => ({ ...prev, [field]: value as any }));
+    };
+
+    const handleSaveCompanyProfile = async () => {
+        if (!profileData) return;
+        setIsSavingCompanyProfile(true);
+        setError(null);
+        try {
+            const updated = await updateCompanyProfile(companyProfile);
+            setProfileData(updated);
+        } catch (err) {
+            console.error('[CompanyProfile Error]', err);
+            setError(err instanceof Error ? err.message : 'Не удалось сохранить профиль компании');
+        } finally {
+            setIsSavingCompanyProfile(false);
         }
     };
 
@@ -269,7 +310,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                                 <h3 className="text-xl font-bold text-white flex items-center gap-2">
                                     <Building2 className="text-[#00d4ff]" /> Реквизиты организации
                                 </h3>
-                                <p className="text-slate-400 text-sm mt-1">Подключите организацию для автозаполнения документов</p>
+                                <p className="text-slate-400 text-sm mt-1">Эти данные используются для автозаполнения документов и счетов.</p>
                             </div>
                             <button className="text-[#00d4ff] text-sm font-medium hover:underline bg-[#00d4ff]/10 px-3 py-1 rounded-lg">
                                 Сохранить
@@ -303,6 +344,112 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                                     onChange={(e) => handleOrgChange('email', e.target.value)}
                                     className="w-full bg-[#0f1419] border border-[#2a3441] p-3 rounded-xl text-white font-medium focus:border-[#00d4ff] outline-none"
                                 />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Профиль компании для персонализации анализа */}
+                    <div className="bg-[#1a1f2e] border border-[#2a3441] rounded-2xl p-6">
+                        <div className="flex justify-between items-start mb-6">
+                            <div>
+                                <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                                    <ShieldCheck className="text-[#00d4ff]" /> Профиль компании для анализа тендеров
+                                </h3>
+                                <p className="text-slate-400 text-sm mt-1">
+                                    Отметьте, какие лицензии и опыт есть у вашей компании. Система будет подсвечивать только те барьеры, которых у вас нет.
+                                </p>
+                            </div>
+                            <button
+                                onClick={handleSaveCompanyProfile}
+                                disabled={isSavingCompanyProfile}
+                                className="text-[#00d4ff] text-sm font-medium hover:underline bg-[#00d4ff]/10 px-3 py-1 rounded-lg disabled:opacity-60"
+                            >
+                                {isSavingCompanyProfile ? 'Сохранение...' : 'Сохранить профиль'}
+                            </button>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                                <p className="text-slate-400 text-xs uppercase font-semibold">Лицензии и допуски</p>
+                                <label className="flex items-center gap-2 text-sm text-slate-200">
+                                    <input
+                                        type="checkbox"
+                                        checked={companyProfile.has_sro}
+                                        onChange={(e) => handleCompanyProfileChange('has_sro', e.target.checked)}
+                                        className="rounded border-[#2a3441] bg-[#0f1419] text-[#00d4ff]"
+                                    />
+                                    Есть СРО / допуски к строительным работам
+                                </label>
+                                <label className="flex items-center gap-2 text-sm text-slate-200">
+                                    <input
+                                        type="checkbox"
+                                        checked={companyProfile.has_fstek}
+                                        onChange={(e) => handleCompanyProfileChange('has_fstek', e.target.checked)}
+                                        className="rounded border-[#2a3441] bg-[#0f1419] text-[#00d4ff]"
+                                    />
+                                    Есть лицензия ФСТЭК / защита информации
+                                </label>
+                                <label className="flex items-center gap-2 text-sm text-slate-200">
+                                    <input
+                                        type="checkbox"
+                                        checked={companyProfile.has_fsb}
+                                        onChange={(e) => handleCompanyProfileChange('has_fsb', e.target.checked)}
+                                        className="rounded border-[#2a3441] bg-[#0f1419] text-[#00d4ff]"
+                                    />
+                                    Есть лицензия ФСБ
+                                </label>
+                                <label className="flex items-center gap-2 text-sm text-slate-200">
+                                    <input
+                                        type="checkbox"
+                                        checked={companyProfile.has_mchs}
+                                        onChange={(e) => handleCompanyProfileChange('has_mchs', e.target.checked)}
+                                        className="rounded border-[#2a3441] bg-[#0f1419] text-[#00d4ff]"
+                                    />
+                                    Есть лицензия МЧС
+                                </label>
+                            </div>
+
+                            <div className="space-y-4">
+                                <div className="space-y-1">
+                                    <p className="text-slate-400 text-xs uppercase font-semibold">Опыт участия</p>
+                                    <select
+                                        value={companyProfile.experience_level || ''}
+                                        onChange={(e) =>
+                                            handleCompanyProfileChange(
+                                                'experience_level',
+                                                e.target.value || undefined,
+                                            )
+                                        }
+                                        className="w-full bg-[#0f1419] border border-[#2a3441] p-3 rounded-xl text-white text-sm focus:border-[#00d4ff] outline-none"
+                                    >
+                                        <option value="">Не указано</option>
+                                        <option value="none">Только первые тендеры</option>
+                                        <option value="up_to_10m">Опыт контрактов до 10 млн ₽</option>
+                                        <option value="10_50m">Опыт контрактов 10–50 млн ₽</option>
+                                        <option value="50m_plus">Опыт контрактов выше 50 млн ₽</option>
+                                    </select>
+                                </div>
+
+                                <div className="space-y-1">
+                                    <p className="text-slate-400 text-xs uppercase font-semibold">Система налогообложения</p>
+                                    <select
+                                        value={companyProfile.tax_system || ''}
+                                        onChange={(e) =>
+                                            handleCompanyProfileChange('tax_system', e.target.value || undefined)
+                                        }
+                                        className="w-full bg-[#0f1419] border border-[#2a3441] p-3 rounded-xl text-white text-sm focus:border-[#00d4ff] outline-none"
+                                    >
+                                        <option value="">Не указано</option>
+                                        <option value="OSN">ОСН</option>
+                                        <option value="USN">УСН</option>
+                                        <option value="PATENT">Патент</option>
+                                    </select>
+                                </div>
+
+                                <p className="text-[11px] text-slate-500">
+                                    Профиль компании используется только для расчёта рисков и не передаётся в документы.
+                                    Это помогает системе отличать реальные барьеры от тех, которые для вас уже закрыты.
+                                </p>
                             </div>
                         </div>
                     </div>

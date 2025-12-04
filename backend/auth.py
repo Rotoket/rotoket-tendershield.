@@ -29,8 +29,25 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 
 def get_password_hash(password: str) -> str:
-    """Хеширует пароль"""
-    return pwd_context.hash(password)
+    """Хеширует пароль с учётом ограничения bcrypt по длине (72 байта)."""
+    # bcrypt обрабатывает только первые 72 байта пароля. Чтобы избежать ошибок и
+    # неожиданных обрезаний на стороне библиотеки, аккуратно укорачиваем пароль сами.
+    raw_password = (password or "").strip()
+    try:
+        encoded = raw_password.encode("utf-8")
+    except Exception:
+        # На всякий случай приводим к str и пробуем ещё раз
+        raw_password = str(password or "").strip()
+        encoded = raw_password.encode("utf-8", errors="ignore")
+
+    if len(encoded) > 72:
+        logger.warning(
+            "Пароль длиннее 72 байт, выполняем безопасное усечение до допустимой длины для bcrypt"
+        )
+        trimmed_bytes = encoded[:72]
+        raw_password = trimmed_bytes.decode("utf-8", errors="ignore")
+
+    return pwd_context.hash(raw_password)
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:

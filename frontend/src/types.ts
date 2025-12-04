@@ -1,7 +1,7 @@
 
 export enum AppView {
   LOGIN = 'LOGIN',
-  ANALYZER = 'ANALYZER', // Главный экран
+  ANALYZER = 'ANALYZER', // Анализ одного документа
   AUDIT = 'AUDIT', // Комплексный аудит пакета документов
   GENERATOR = 'GENERATOR', // Генератор документов
   KNOWLEDGE = 'KNOWLEDGE', // База знаний
@@ -191,6 +191,19 @@ export interface AnalysisResult {
     explanation?: string;
     quote?: string;
   }[];
+  // Стоп-факторы (DEAL BREAKERS)
+  dealBreakers?: {
+    title: string;
+    quote?: string;
+    essence: string;
+    status: string;
+    lawReference?: string | null;
+    action?: {
+      type: string;
+      buttonLabel: string;
+      justification: string;
+    };
+  }[];
   keywordMatches: KeywordMatch[];
   // Хаб-сводка для тендерного специалиста (краткий обзор)
   hub?: TenderHubSummary;
@@ -200,6 +213,34 @@ export interface AnalysisResult {
     title: string;
     message: string;
     benefits?: string[];
+  };
+  // Структурированные ответы на 25 вопросов тендерного анализа
+  structuredAnswers?: {
+    customer?: string;
+    subject?: string;
+    nmck?: string;
+    applicationDeadline?: string;
+    executionDeadline?: string;
+    participantRequirements?: string;
+    securityAmounts?: string;
+    paymentTerms?: string;
+    evaluationCriteria?: string;
+    contradictions?: string;
+    penalties?: string;
+    guarantees?: string;
+    additionalRequirements?: string;
+    tenderRisks?: string;
+    documentationRequirements?: string;
+    financialRequirements?: string;
+    confidentiality?: string;
+    customerHistory?: string;
+    subcontractingLimits?: string;
+    conflictsOfInterest?: string;
+    discriminationSigns?: string;
+    terminationConditions?: string;
+    competitionLevel?: string;
+    insuranceRequirements?: string;
+    additionalRisks?: string;
   };
 }
 
@@ -269,9 +310,63 @@ export interface PackageDocumentAnalysis {
     explanation?: string;
     quote?: string;
   }[];
-  financialSummary?: any;
+  financialSummary?: {
+    nmck?: string;
+    estimatedCost?: string;
+    marginComment?: string;
+    advance?: string;
+    bidSecurity?: string;
+    contractSecurity?: string;
+    paymentTerms?: string;
+    penaltyRiskRubles?: string;
+    workingCapitalNeeded?: string;
+    guaranteeAmount?: string;
+    [key: string]: any;
+  };
   timelineSummary?: any;
+  participantRequirements?: {
+    licenses?: string[];
+    experienceRequired?: string;
+    nationalRegime?: string;
+    overallBarrier?: string;
+    [key: string]: any;
+  };
+  summaryBlocks?: {
+    money?: { status: string; comment: string };
+    time?: { status: string; comment: string };
+    barriers?: { status: string; comment: string };
+    traps?: { status: string; comment: string };
+    [key: string]: any;
+  };
   actions?: any[];
+  // Структурированные ответы на 25 вопросов тендерного анализа
+  structuredAnswers?: {
+    customer?: string;
+    subject?: string;
+    nmck?: string;
+    applicationDeadline?: string;
+    executionDeadline?: string;
+    participantRequirements?: string;
+    securityAmounts?: string;
+    paymentTerms?: string;
+    evaluationCriteria?: string;
+    contradictions?: string;
+    penalties?: string;
+    guarantees?: string;
+    additionalRequirements?: string;
+    tenderRisks?: string;
+    documentationRequirements?: string;
+    financialRequirements?: string;
+    confidentiality?: string;
+    customerHistory?: string;
+    subcontractingLimits?: string;
+    conflictsOfInterest?: string;
+    discriminationSigns?: string;
+    terminationConditions?: string;
+    competitionLevel?: string;
+    insuranceRequirements?: string;
+    additionalRisks?: string;
+  };
 }
 
 // Глобальные риски по всему пакету документов

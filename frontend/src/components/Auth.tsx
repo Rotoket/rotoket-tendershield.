@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Shield, Lock, Mail, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
+import { Shield, Lock, Mail, ArrowRight, Loader2, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { User } from '../types';
 import { login, register, type AuthUser } from '../services/authService';
 
@@ -18,6 +18,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
     const [agreeTerms, setAgreeTerms] = useState(false);
     const [agreePdn, setAgreePdn] = useState(false);
     const [activeDoc, setActiveDoc] = useState<null | 'terms' | 'pdn'>(null);
+    const [showPassword, setShowPassword] = useState(false);
 
     const mapAuthUserToUser = (authUser: AuthUser): User => {
         const tariffMap: ('Start' | 'Pro' | 'Enterprise')[] = ['Start', 'Pro', 'Enterprise'];
@@ -152,13 +153,21 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                             <Lock className="h-5 w-5 text-[#4b5563] group-focus-within:text-[#00d4ff] transition-colors" />
                         </div>
                         <input
-                            type="password"
+                            type={showPassword ? 'text' : 'password'}
                             required
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            className="block w-full pl-11 pr-4 py-4 bg-[#1a1f2e] border border-[#2a3441] rounded-xl text-white placeholder-[#4b5563] focus:outline-none focus:border-[#00d4ff] focus:ring-1 focus:ring-[#00d4ff] transition-all"
+                            className="block w-full pl-11 pr-11 py-4 bg-[#1a1f2e] border border-[#2a3441] rounded-xl text-white placeholder-[#4b5563] focus:outline-none focus:border-[#00d4ff] focus:ring-1 focus:ring-[#00d4ff] transition-all"
                             placeholder="Пароль доступа"
                         />
+                        <button
+                            type="button"
+                            onClick={() => setShowPassword((prev) => !prev)}
+                            className="absolute inset-y-0 right-0 pr-4 flex items-center text-[#4b5563] hover:text-[#00d4ff] transition-colors"
+                            aria-label={showPassword ? 'Скрыть пароль' : 'Показать пароль'}
+                        >
+                            {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                        </button>
                     </div>
 
                     <div className="space-y-2 text-xs text-[#a8b5cc] mt-2">

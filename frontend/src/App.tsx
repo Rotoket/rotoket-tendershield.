@@ -18,7 +18,7 @@ import { Clock } from 'lucide-react';
 import { getCurrentUser, logout as authLogout, type AuthUser } from './services/authService';
 
 const App: React.FC = () => {
-  const [currentView, setCurrentView] = useState<AppView>(AppView.ANALYZER);
+  const [currentView, setCurrentView] = useState<AppView>(AppView.AUDIT);
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   // Последний результат анализа для автоподстановки в калькулятор
@@ -45,30 +45,15 @@ const App: React.FC = () => {
           };
           setUser(mappedUser);
         } else {
-          // ВРЕМЕННО: Автоматический вход с тестовым пользователем (для разработки)
-          // TODO: Удалить перед продакшеном!
-          const testUser: User = {
-            id: '999',
-            name: 'Тестовый Пользователь',
-            company: 'Тестовая Компания',
-            tariff: 'Pro',
-            email: 'test@tendershield.pro',
-          };
-          setUser(testUser);
-          console.warn('⚠️ ВНИМАНИЕ: Авторизация отключена. Используется тестовый пользователь.');
+          // Токена нет или он невалиден — оставляем пользователя неавторизованным.
+          // Это позволяет показать полноценное окно входа/регистрации.
+          setUser(null);
         }
       } catch (error) {
         console.error('[Auth Check Error]', error);
-        // ВРЕМЕННО: При ошибке тоже создаем тестового пользователя
-        const testUser: User = {
-          id: '999',
-          name: 'Тестовый Пользователь',
-          company: 'Тестовая Компания',
-          tariff: 'Pro',
-          email: 'test@tendershield.pro',
-        };
-        setUser(testUser);
-        console.warn('⚠️ ВНИМАНИЕ: Авторизация отключена. Используется тестовый пользователь.');
+        // При ошибке авторизации также оставляем пользователя неавторизованным,
+        // чтобы пользователь мог залогиниться вручную.
+        setUser(null);
       } finally {
         setIsLoading(false);
       }
@@ -83,30 +68,49 @@ const App: React.FC = () => {
 
   const handleLogin = (loggedInUser: User) => {
     setUser(loggedInUser);
-    setCurrentView(AppView.ANALYZER);
+    setCurrentView(AppView.AUDIT);
   };
 
   const handleLogout = () => {
     authLogout();
     setUser(null);
-    setCurrentView(AppView.ANALYZER);
+    setCurrentView(AppView.AUDIT);
   };
 
   // Показываем загрузку при проверке авторизации
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#0f1419] flex items-center justify-center">
-        <div className="text-white text-xl">Загрузка...</div>
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-900 dark:bg-[#0f1419] dark:text-white">
+        <div className="text-xl">Загрузка...</div>
       </div>
     );
   }
 
-  // Render Login if not authenticated (но с поддержкой демо-режима)
+  // Render app even без реальной авторизации — временный dev-режим без входа по паролю
   if (!user) {
+    const demoUser: User = {
+      id: 'demo',
+      name: 'Тестовый специалист',
+      company: 'Организация',
+      tariff: 'Start',
+      email: 'demo@tendershield.local',
+    };
+
     return (
       <DemoProvider>
         <DemoModeBanner />
-        <Auth onLogin={handleLogin} />
+        <NotificationsPanel />
+        <div className="flex min-h-screen bg-slate-50 text-slate-900 dark:bg-[#0f1419] dark:text-white">
+          <Sidebar
+            currentView={currentView}
+            onChangeView={setCurrentView}
+            user={demoUser}
+            onLogout={handleLogout}
+          />
+          <main className="flex-1 ml-0 md:ml-[280px] p-8 h-screen overflow-y-auto custom-scrollbar">
+            {renderContent()}
+          </main>
+        </div>
       </DemoProvider>
     );
   }
@@ -142,7 +146,12 @@ const App: React.FC = () => {
       case AppView.HELP:
         return <HelpGuide />;
       default:
-        return <Analyzer />;
+        return (
+          <ComplexAudit
+            onSelectForCalculator={setCalcPreset}
+            onOpenCalculator={openCalculator}
+          />
+        );
     }
   };
 
@@ -150,14 +159,14 @@ const App: React.FC = () => {
     <DemoProvider>
       <DemoModeBanner />
       <NotificationsPanel />
-      <div className="flex min-h-screen bg-[#0f1419]">
+      <div className="flex min-h-screen bg-slate-50 text-slate-900 dark:bg-[#0f1419] dark:text-white">
         <Sidebar
           currentView={currentView}
           onChangeView={setCurrentView}
           user={user}
           onLogout={handleLogout}
         />
-        <main className="flex-1 ml-0 md:ml-[280px] p-8 h-screen overflow-hidden">
+        <main className="flex-1 ml-0 md:ml-[280px] p-8 h-screen overflow-y-auto custom-scrollbar">
           {renderContent()}
         </main>
       </div>

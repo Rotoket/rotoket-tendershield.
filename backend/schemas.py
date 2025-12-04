@@ -76,11 +76,22 @@ class TrialInfo(BaseModel):
     trial_end: Optional[datetime] = None
 
 
+class CompanyProfile(BaseModel):
+    """Профиль компании для персонализации анализа"""
+    has_sro: bool = False
+    has_fstek: bool = False
+    has_fsb: bool = False
+    has_mchs: bool = False
+    experience_level: Optional[str] = None  # e.g. "none" | "up_to_10m" | "10_50m" | "50m_plus"
+    tax_system: Optional[str] = None       # e.g. "OSN" | "USN" | "PATENT"
+
+
 class ProfileResponse(BaseModel):
     user: UserResponse
     tariff: Optional[TariffResponse] = None
     usage: Optional[UsageResponse] = None
     trial: Optional[TrialInfo] = None
+    company_profile: Optional[CompanyProfile] = None
 
 
 # Схемы для анализов

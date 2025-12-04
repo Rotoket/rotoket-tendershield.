@@ -529,6 +529,69 @@ const Analyzer: React.FC = () => {
 
                                 {result && (
                                     <div className="animate-fade-in space-y-6">
+                                        {/* DEAL BREAKERS / СТОП-ФАКТОРЫ */}
+                                        {result.dealBreakers && result.dealBreakers.length > 0 && (
+                                            <div className="bg-[#450a0a] border border-[#fecaca] rounded-2xl p-6 text-sm text-red-50 shadow-lg">
+                                                <div className="flex items-center justify-between mb-4">
+                                                    <div className="flex items-center gap-2">
+                                                        <AlertOctagon className="text-red-300" size={22} />
+                                                        <h3 className="text-lg font-bold tracking-wide">
+                                                            Стоп‑факторы: проверка перед участием
+                                                        </h3>
+                                                    </div>
+                                                    <span className="px-3 py-1 rounded-full bg-red-600 text-xs font-semibold uppercase tracking-wide">
+                                                        Рекомендуется не участвовать
+                                                    </span>
+                                                </div>
+                                                <div className="space-y-4">
+                                                    {result.dealBreakers.map((db, idx) => (
+                                                        <div
+                                                            key={`${db.title}-${idx}`}
+                                                            className="bg-black/10 border border-red-400/40 rounded-xl p-4"
+                                                        >
+                                                            <div className="flex items-start justify-between gap-3">
+                                                                <div>
+                                                                    <h4 className="font-bold text-red-50 mb-1">
+                                                                        {db.title}
+                                                                    </h4>
+                                                                    {db.status && (
+                                                                        <p className="text-[11px] uppercase tracking-wide text-red-200 mb-2">
+                                                                            {db.status}
+                                                                        </p>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                            {db.quote && (
+                                                                <p className="text-xs text-red-100 bg-black/20 border border-red-400/30 rounded-lg p-3 italic mb-2 whitespace-pre-line">
+                                                                    «{db.quote}»
+                                                                </p>
+                                                            )}
+                                                            <p className="text-sm text-red-50 mb-2 whitespace-pre-line">
+                                                                {db.essence}
+                                                            </p>
+                                                            <div className="flex flex-wrap items-center gap-2 justify-between">
+                                                                <div className="text-[11px] text-red-200">
+                                                                    {db.lawReference && (
+                                                                        <span>
+                                                                            Норма: <span className="font-semibold">{db.lawReference}</span>
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                                {db.action && (
+                                                                    <button
+                                                                        type="button"
+                                                                        className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-red-500 hover:bg-red-400 text-xs font-semibold text-[#0f1419] transition-colors"
+                                                                    >
+                                                                        {db.action.buttonLabel}
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+
                                         {/* HUB-ДАШБОРД ДЛЯ ТЕНДЕРНОГО СПЕЦИАЛИСТА */}
                                         {result.hub && (
                                             <TenderHubDashboard result={result} hub={result.hub} />
@@ -590,7 +653,87 @@ const Analyzer: React.FC = () => {
                                             </div>
                                         </div>
 
-                                        {/* 3. DEEP AUDIT CHECKLIST (ЕСЛИ ЕСТЬ) */}
+                                        {/* 2b. Финансовый удар в рублях */}
+                                        { (result as any).financialSummary && (
+                                            <div className="bg-[#1a1f2e] border border-[#2a3441] rounded-2xl p-6">
+                                                <div className="flex items-center justify-between mb-4">
+                                                    <h3 className="text-white font-bold flex items-center gap-2">
+                                                        <Banknote className="text-[#22c55e]" size={18} /> Финансовый удар
+                                                    </h3>
+                                                </div>
+                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                                                    <div>
+                                                        <div className="text-slate-400 text-xs mb-1">Риск штрафов за 1 день просрочки</div>
+                                                        <div className="text-white font-semibold">
+                                                            {(result as any).financialSummary?.penaltyRiskRubles || '—'}
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <div className="text-slate-400 text-xs mb-1">Кассовый разрыв (оценка своих средств)</div>
+                                                        <div className="text-white font-semibold">
+                                                            {(result as any).financialSummary?.workingCapitalNeeded || '—'}
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <div className="text-slate-400 text-xs mb-1">Обеспечение контракта</div>
+                                                        <div className="text-white font-semibold">
+                                                            {(result as any).financialSummary?.guaranteeAmount ||
+                                                                (result as any).financialSummary?.contractSecurity ||
+                                                                '—'}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <p className="mt-3 text-xs text-slate-400 max-w-2xl">
+                                                    Это ориентировочная оценка по условиям контракта. Точные цифры считайте в калькуляторе маржи с учётом вашей себестоимости.
+                                                </p>
+                                            </div>
+                                        )}
+
+                                        {/* 3. Список рисков в человеко-понятном формате */}
+                                        {result.issues && result.issues.length > 0 && (
+                                            <div className="bg-[#1a1f2e] border border-[#2a3441] rounded-2xl p-6 space-y-4">
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <h3 className="text-white font-bold flex items-center gap-2">
+                                                        <AlertTriangle className="text-[#f59e0b]" size={18} /> Ключевые риски
+                                                    </h3>
+                                                </div>
+                                                <div className="space-y-3">
+                                                    {result.issues.map((issue, idx) => (
+                                                        <div
+                                                            key={`${issue.title}-${idx}`}
+                                                            className="border border-[#2a3441] rounded-xl p-4 bg-[#020617]"
+                                                        >
+                                                            <div className="flex justify-between items-start gap-3 mb-1">
+                                                                <div>
+                                                                    <h4 className="text-base font-semibold text-white mb-1">
+                                                                        {issue.title}
+                                                                    </h4>
+                                                                    <p className="text-sm text-slate-200 whitespace-pre-line">
+                                                                        {issue.description}
+                                                                    </p>
+                                                                </div>
+                                                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${
+                                                                    issue.severity === 'HIGH'
+                                                                        ? 'bg-[#b91c1c] text-red-50'
+                                                                        : issue.severity === 'MEDIUM'
+                                                                        ? 'bg-[#f59e0b]/20 text-[#fbbf24]'
+                                                                        : 'bg-[#16a34a]/20 text-[#4ade80]'
+                                                                }`}>
+                                                                    {issue.severity}
+                                                                </span>
+                                                            </div>
+                                                            {issue.quote && (
+                                                                <p className="mt-2 text-[11px] text-slate-300 italic bg-black/30 border border-[#1f2937] rounded-lg p-3 whitespace-pre-line">
+                                                                    «{issue.quote}»
+                                                                </p>
+                                                            )}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* 4. DEEP AUDIT CHECKLIST (ЕСЛИ ЕСТЬ) */}
                                         {result.deepAudit && result.deepAudit.length > 0 && (
                                             <div className="space-y-4">
                                                 <div className="bg-[#1a1f2e] border border-[#2a3441] rounded-2xl overflow-hidden">
@@ -609,6 +752,56 @@ const Analyzer: React.FC = () => {
                                                             />
                                                         ))}
                                                     </div>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* 5. СТРУКТУРИРОВАННЫЕ ОТВЕТЫ НА 25 ВОПРОСОВ */}
+                                        {result.structuredAnswers && Object.keys(result.structuredAnswers).length > 0 && (
+                                            <div className="bg-[#1a1f2e] border border-[#2a3441] rounded-2xl overflow-hidden">
+                                                <div className="bg-[#0f1419] px-6 py-4 border-b border-[#2a3441]">
+                                                    <h3 className="text-white font-bold flex items-center gap-2 text-lg">
+                                                        <FileText className="text-[#00d4ff]" size={20} /> Структурированный анализ по чек-листу
+                                                    </h3>
+                                                    <p className="text-slate-400 text-sm mt-1">Ответы на 25 ключевых вопросов тендерного анализа</p>
+                                                </div>
+                                                <div className="p-6 space-y-4">
+                                                    {[
+                                                        { key: 'customer', label: '1. Заказчик (ИНН, ОГРН, местонахождение)' },
+                                                        { key: 'subject', label: '2. Предмет закупки' },
+                                                        { key: 'nmck', label: '3. Начальная (максимальная) цена контракта' },
+                                                        { key: 'applicationDeadline', label: '4. Сроки подачи заявок' },
+                                                        { key: 'executionDeadline', label: '5. Сроки исполнения контракта' },
+                                                        { key: 'participantRequirements', label: '6. Требования к участникам (опыт, лицензии, сертификации)' },
+                                                        { key: 'securityAmounts', label: '7. Обеспечительные суммы (заявка и контракт)' },
+                                                        { key: 'paymentTerms', label: '8. Условия оплаты (предоплата, постоплата, авансы)' },
+                                                        { key: 'evaluationCriteria', label: '9. Критерии оценки заявок и методика присуждения' },
+                                                        { key: 'contradictions', label: '10. Противоречия и неоднозначные формулировки' },
+                                                        { key: 'penalties', label: '11. Штрафы и санкции за нарушение сроков и условий' },
+                                                        { key: 'guarantees', label: '12. Гарантии и сервисное обслуживание' },
+                                                        { key: 'additionalRequirements', label: '13. Дополнительные требования (поставка, монтаж, обучение)' },
+                                                        { key: 'tenderRisks', label: '14. Риски изменения или отмены тендера' },
+                                                        { key: 'documentationRequirements', label: '15. Требования по оформлению и комплектности документов' },
+                                                        { key: 'financialRequirements', label: '16. Требования к финансовому положению и отчетности' },
+                                                        { key: 'confidentiality', label: '17. Условия конфиденциальности и коммерческой тайны' },
+                                                        { key: 'customerHistory', label: '18. История заказчика (жалобы, судебные дела)' },
+                                                        { key: 'subcontractingLimits', label: '19. Ограничения по субподряду или участию юридических лиц' },
+                                                        { key: 'conflictsOfInterest', label: '20. Возможные конфликты интересов' },
+                                                        { key: 'discriminationSigns', label: '21. Признаки дискриминации или «заточки» под конкретного поставщика' },
+                                                        { key: 'terminationConditions', label: '22. Условия расторжения и изменения контракта' },
+                                                        { key: 'competitionLevel', label: '23. Уровень конкуренции и количество возможных участников' },
+                                                        { key: 'insuranceRequirements', label: '24. Требования к страхованию ответственности' },
+                                                        { key: 'additionalRisks', label: '25. Дополнительные риски и особенности участия' },
+                                                    ].map(({ key, label }) => {
+                                                        const answer = result.structuredAnswers?.[key as keyof typeof result.structuredAnswers];
+                                                        if (!answer || answer === 'Не указано' || answer === 'Не найдено') return null;
+                                                        return (
+                                                            <div key={key} className="border border-[#2a3441] rounded-xl p-4 bg-[#020617]">
+                                                                <div className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-2">{label}</div>
+                                                                <div className="text-sm text-white leading-relaxed whitespace-pre-line">{answer}</div>
+                                                            </div>
+                                                        );
+                                                    })}
                                                 </div>
                                             </div>
                                         )}
