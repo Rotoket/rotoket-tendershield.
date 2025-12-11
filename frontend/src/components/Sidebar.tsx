@@ -11,8 +11,7 @@ interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, user, onLogout }) => {
   const menuItems = [
-    { id: AppView.ANALYZER, label: 'Анализ документа', icon: FileSearch },
-    { id: AppView.AUDIT, label: 'Комплексный аудит', icon: FileSearch },
+    { id: AppView.AUDIT, label: 'Анализ тендера', icon: FileSearch },
     { id: AppView.GENERATOR, label: 'Генератор', icon: FileText },
     { id: AppView.CALCULATOR, label: 'Калькулятор', icon: Calculator },
     { id: AppView.HISTORY, label: 'История проверок', icon: Clock },

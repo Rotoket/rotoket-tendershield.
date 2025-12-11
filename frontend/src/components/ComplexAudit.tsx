@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import { analyzePackage, searchLegal, APIErrorException } from '../services/geminiService';
-import { PackageAnalysis, PackageDocumentAnalysis, VerdictType, CalculatorPreset } from '../types';
-import { AlertTriangle, FileSearch, Loader2, ChevronRight, FileSpreadsheet } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { analyzePackage, searchLegal, APIErrorException, chatWithSinaps } from '../services/geminiService';
+import { PackageAnalysis, PackageDocumentAnalysis, VerdictType, CalculatorPreset, ChatMessage } from '../types';
+import { AlertTriangle, FileSearch, Loader2, ChevronRight, FileSpreadsheet, Zap, ArrowRight, Upload, Eye, EyeOff, X } from 'lucide-react';
 import { logEvent } from '../utils/logger';
 import { buildPackageAuditReport } from '../utils/packageReport';
 import RateLimitError from './RateLimitError';
@@ -59,6 +59,26 @@ const ComplexAudit: React.FC<ComplexAuditProps> = ({ onSelectForCalculator, onOp
   const [isLegalLoading, setIsLegalLoading] = useState(false);
   const [legalError, setLegalError] = useState<string | null>(null);
 
+  // Chat state
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [inputMsg, setInputMsg] = useState('');
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!files.length && messages.length === 0) {
+      setMessages([{
+        id: 'init',
+        role: 'model',
+        text: 'Здравствуйте! Я готов к работе. Загрузите пакет документов для комплексного аудита, и я проведу детальный анализ всех документов.',
+        timestamp: new Date()
+      }]);
+    }
+  }, []);
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
   const buildPresetFromDoc = (
     pkg: PackageAnalysis,
     doc: PackageDocumentAnalysis,
@@ -75,15 +95,25 @@ const ComplexAudit: React.FC<ComplexAuditProps> = ({ onSelectForCalculator, onOp
     const selected = event.target.files;
     if (!selected) return;
     const asArray = Array.from(selected);
-    setFiles(asArray);
+    // Добавляем новые файлы к существующим (если они есть)
+    setFiles(prevFiles => {
+      const newFiles = [...prevFiles, ...asArray];
+      // Убираем дубликаты по имени и размеру
+      const uniqueFiles = newFiles.filter((file, index, self) =>
+        index === self.findIndex(f => f.name === file.name && f.size === file.size)
+      );
+      return uniqueFiles;
+    });
     setResult(null);
     setError(null);
     logEvent(
       'ComplexAudit',
-      `Загружен пакет документов (${asArray.length} шт.) для комплексного аудита`,
+      `Загружено ${asArray.length} файл(ов) для комплексного аудита (всего: ${files.length + asArray.length})`,
       'info',
       asArray.map((f: File) => f.name),
     );
+    // Сбрасываем input, чтобы можно было загрузить тот же файл снова
+    event.target.value = '';
   };
 
   const handleAnalyze = async () => {
@@ -178,17 +208,6 @@ const ComplexAudit: React.FC<ComplexAuditProps> = ({ onSelectForCalculator, onOp
     }
   };
 
-  // Простейшая проверка согласованности значений между документами
-  const getConsistency = (values: (string | undefined | null)[]): 'match' | 'mismatch' | 'unknown' => {
-    const normalized = values
-      .map((v) => (v || '').toString().trim())
-      .filter((v) => v.length > 0);
-    if (normalized.length <= 1) return 'unknown';
-    const first = normalized[0];
-    const allEqual = normalized.every((v) => v === first);
-    return allEqual ? 'match' : 'mismatch';
-  };
-
   const handleDownloadReport = () => {
     if (!result) return;
 
@@ -216,332 +235,279 @@ const ComplexAudit: React.FC<ComplexAuditProps> = ({ onSelectForCalculator, onOp
     }
   };
 
-  return (
-    <div className="flex flex-col md:flex-row gap-6 h-full text-white">
-      {/* Левая колонка: загрузка и итоги по пакету */}
-      <div className="w-full md:w-1/3 space-y-4">
-        <div className="bg-[#111827] border border-[#1f2937] rounded-xl p-4">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <FileSearch size={20} className="text-[#00d4ff]" />
-              <h2 className="font-semibold text-lg">Комплексный аудит пакета</h2>
-            </div>
-            {onOpenCalculator && (
-              <button
-                onClick={() => {
-                  logEvent('ComplexAudit', 'Открыт калькулятор из экрана комплексного аудита');
-                  onOpenCalculator();
-                }}
-                className="hidden md:inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-[#00d4ff]/10 border border-[#00d4ff]/60 text-[#00d4ff] text-[11px] font-semibold hover:bg-[#00d4ff]/20 transition-all"
-              >
-                <FileSpreadsheet size={14} />
-                В калькулятор
-              </button>
-            )}
-          </div>
-          <p className="text-sm text-slate-400 mb-3">
-            Загрузите ТЗ, проект договора и другие документы одним пакетом. Система
-            проанализирует каждый документ и выделит глобальные риски по закупке.
-          </p>
-          <div className="space-y-3">
-            <label className="block text-sm text-slate-300">Отрасль закупки</label>
-            <select
-              disabled={isAnalyzing}
-              value={industry}
-              onChange={(e) => setIndustry(e.target.value)}
-              className="w-full bg-[#020617] border border-[#1f2937] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-[#00d4ff]"
-            >
-              <option value="UNIVERSAL">Универсальная</option>
-              <option value="IT">IT / оборудование / ПО</option>
-              <option value="CONSTRUCTION">Строительство</option>
-              <option value="MEDICINE">Медицина / медизделия</option>
-            </select>
+  const handleSendMessage = async () => {
+    if (!inputMsg.trim()) return;
+    const newMsg: ChatMessage = {
+      id: Date.now().toString(),
+      role: 'user',
+      text: inputMsg,
+      timestamp: new Date(),
+    };
+    setMessages(prev => [...prev, newMsg]);
+    logEvent('ComplexAudit', 'Отправлен вопрос в чат Sinaps AI из комплексного аудита', 'info');
+    setInputMsg('');
+    try {
+      const response = await chatWithSinaps(messages, newMsg.text);
+      setMessages(prev => [
+        ...prev,
+        {
+          id: (Date.now() + 1).toString(),
+          role: 'model',
+          text: response || 'Ошибка',
+          timestamp: new Date(),
+        },
+      ]);
+      logEvent('ComplexAudit', 'Получен ответ от чата Sinaps AI', 'info');
+    } catch (err) {
+      console.error('Chat error', err);
+      setMessages(prev => [
+        ...prev,
+        {
+          id: (Date.now() + 1).toString(),
+          role: 'model',
+          text: 'Произошла ошибка при обращении к чату.',
+          timestamp: new Date(),
+        },
+      ]);
+      logEvent('ComplexAudit', 'Ошибка при обращении к чату Sinaps AI', 'error', err);
+    }
+  };
 
-            <div className="mt-4">
-              <label className="block text-sm text-slate-300 mb-2">Пакет документов</label>
+  return (
+    <div className="flex h-full gap-6 flex-col animate-fade-in">
+      {/* Header & Industry Selector */}
+      <div className="flex justify-between items-end mb-2">
+        <div>
+          <h2 className="text-3xl font-bold text-white mb-1">Комплексный аудит тендера</h2>
+          <p className="text-slate-400 text-sm">Загрузите пакет документов для комплексного анализа</p>
+        </div>
+
+        {/* INDUSTRY SELECTOR UI - только Универсальный */}
+        <div className="flex bg-[#1a1f2e] px-4 py-2 rounded-xl border border-[#2a3441]">
+          <span className="text-sm font-bold text-[#00d4ff]">Универсальный</span>
+        </div>
+      </div>
+
+      <div className="flex h-full gap-6 overflow-hidden">
+        {/* LEFT: Analysis Content */}
+        <div className="flex-1 flex flex-col gap-6 overflow-y-auto pr-2 custom-scrollbar pb-20">
+          {/* Rate Limit Error Display */}
+          {rateLimitError && (
+            <RateLimitError
+              error={rateLimitError}
+              onUpgrade={() => {
+                setRateLimitError(null);
+              }}
+            />
+          )}
+
+          {!files.length ? (
+            <div className="relative border-2 border-dashed border-[#2a3441] bg-[#1a1f2e]/50 rounded-2xl p-12 text-center hover:border-[#00d4ff] transition-all cursor-pointer flex flex-col items-center justify-center flex-1 min-h-[400px]">
               <input
                 type="file"
                 multiple
+                className="absolute inset-0 opacity-0 cursor-pointer z-10 w-full h-full"
                 onChange={handleFilesChange}
-                className="block w-full text-sm text-slate-300 file:mr-3 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-[#00d4ff]/10 file:text-[#00d4ff] hover:file:bg-[#00d4ff]/20"
-                accept=".pdf,.doc,.docx,.txt,.rtf,.xls,.xlsx"
+                accept=".pdf,.docx,.doc,.txt,.rtf,.xls,.xlsx"
               />
-              <p className="mt-2 text-[10px] text-slate-500">
-                Загружая пакет документов, вы подтверждаете законность их использования и соглашаетесь на обработку возможных персональных данных (152-ФЗ). Сервис даёт аналитическую оценку, окончательное решение остаётся за специалистом.
-              </p>
-              {files.length > 0 && (
-                <ul className="mt-3 max-h-32 overflow-y-auto text-xs text-slate-400 space-y-1">
-                  {files.map((f, idx) => (
-                    <li key={idx} className="truncate">
-                      {idx + 1}. {f.name}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-
-            <button
-              onClick={handleAnalyze}
-              disabled={isAnalyzing || !files.length}
-              className="mt-4 inline-flex items-center justify-center w-full rounded-lg bg-[#00d4ff] text-slate-900 font-semibold py-2 text-sm hover:bg-[#06b6d4] disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              {isAnalyzing ? (
-                <>
-                  <Loader2 className="animate-spin mr-2" size={16} /> Анализируем пакет...
-                </>
-              ) : (
-                'Запустить комплексный аудит'
-              )}
-            </button>
-
-            {rateLimitError && (
-              <RateLimitError
-                error={rateLimitError}
-                onUpgrade={() => {
-                  // TODO: Navigate to profile/tariff page
-                  setRateLimitError(null);
-                }}
-              />
-            )}
-            {error && !rateLimitError && (
-              <div className="mt-3 text-xs text-red-400 flex items-start gap-2">
-                <AlertTriangle size={14} />
-                <span>{error}</span>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {result && (
-          <div className={`bg-[#111827] border rounded-xl p-4 ${verdictColor(result.verdict)}`}>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs uppercase tracking-wide opacity-80">Итог по пакету</span>
-              <span className="text-xs">ID: {result.packageId.slice(0, 8)}...</span>
-            </div>
-            <div className="text-3xl font-bold mb-1">{Math.round(result.summaryScore)} / 100</div>
-            <div className="text-sm mb-2">Вердикт: {result.verdict}</div>
-            <p className="text-xs text-slate-300 mb-2">
-              Балл рассчитывается автоматически, окончательное решение принимает специалист.
-            </p>
-            <button
-              onClick={handleDownloadReport}
-              className="mt-1 inline-flex items-center justify-center rounded-lg border border-[#00d4ff]/60 text-[#00d4ff] px-3 py-1 text-[11px] hover:bg-[#00d4ff]/10"
-            >
-              Скачать отчёт (.txt)
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* Правая часть: список документов и риски */}
-      <div className="w-full md:w-2/3 space-y-4 text-sm">
-        {result ? (
-          <>
-            {/* Таблица документов */}
-            <div className="bg-[#111827] border border-[#1f2937] rounded-xl p-4">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="font-semibold text-sm">Документы пакета</h3>
-                <span className="text-xs text-slate-400">{result.documents.length} шт.</span>
-              </div>
-              <div className="divide-y divide-[#1f2937] text-xs">
-                {result.documents.map((doc, idx) => (
-                  <button
-                    key={doc.filename + idx}
-                    onClick={() => handleSelectDoc(idx)}
-                    className={`w-full flex items-center justify-between py-2 px-2 rounded-md text-left hover:bg-slate-800/60 transition-colors ${idx === selectedIndex ? 'bg-slate-800/80' : ''
-                      }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <ChevronRight
-                        size={14}
-                        className={idx === selectedIndex ? 'text-[#00d4ff]' : 'text-slate-500'}
-                      />
-                      <div>
-                        <div className="font-medium truncate max-w-[220px]">{doc.filename}</div>
-                        <div className="text-[10px] text-slate-400 truncate max-w-[220px]">
-                          {doc.summary || 'Краткое резюме не получено'}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3 text-right">
-                      <span className="text-xs text-slate-400 mr-1">
-                        {Math.round(doc.score)} / 100
-                      </span>
-                      <span
-                        className={`px-2 py-0.5 rounded-full border text-[10px] ${verdictColor(
-                          doc.verdict,
-                        )}`}
-                      >
-                        {doc.verdict}
-                      </span>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Глобальные риски */}
-            <div className="bg-[#111827] border border-[#1f2937] rounded-xl p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <AlertTriangle size={18} className="text-[#f97316]" />
-                <h3 className="font-semibold text-sm">Глобальные риски по пакету</h3>
-              </div>
-              {result.globalIssues.length === 0 ? (
-                <p className="text-sm text-slate-300">Значимых глобальных несоответствий не найдено.</p>
-              ) : (
-                <ul className="space-y-2 text-sm">
-                  {result.globalIssues.map((gi, idx) => (
-                    <li
-                      key={idx}
-                      className="border border-slate-700/80 rounded-lg p-2 bg-slate-900/40"
-                    >
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="font-medium">{gi.title}</span>
-                        <span className="text-[10px] px-2 py-0.5 rounded-full border border-slate-600 text-slate-200">
-                          {gi.severity}
-                        </span>
-                      </div>
-                      <p className="text-sm text-slate-300 mb-1">{gi.description}</p>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-
-            {/* Сквозная сверка данных (матрица противоречий) */}
-            {result.documents.length > 1 && (
-              <div className="bg-[#111827] border border-[#1f2937] rounded-xl p-4">
-                <h3 className="font-semibold text-base mb-3">Сквозная сверка данных по комплекту</h3>
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-                  {/* Деньги (НМЦК) */}
-                  <div className="bg-[#020617] border border-slate-700 rounded-lg p-3">
-                    <div className="text-[11px] font-bold uppercase tracking-wide text-slate-400 mb-2">
-                      💸 Деньги (НМЦК)
-                    </div>
-                    {(() => {
-                      const values = result.documents.map(
-                        (doc) => (doc.financialSummary as any)?.nmck || doc.passport?.nmck,
-                      );
-                      const status = getConsistency(values);
-                      return (
-                        <div className="mb-2 text-[11px] font-semibold">
-                          {status === 'match' && (
-                            <span className="text-emerald-400">✅ Данные совпадают между файлами</span>
-                          )}
-                          {status === 'mismatch' && (
-                            <span className="text-red-400">❗ Разные значения НМЦК — нужна проверка</span>
-                          )}
-                          {status === 'unknown' && (
-                            <span className="text-slate-400">Недостаточно данных для сравнения</span>
-                          )}
-                        </div>
-                      );
-                    })()}
-                    {result.documents.map((doc, idx) => (
-                      <div
-                        key={doc.filename + idx}
-                        className="flex items-center justify-between text-xs py-1 border-b border-slate-800 last:border-0"
-                      >
-                        <span className="text-slate-400 truncate max-w-[60%]">{doc.filename}</span>
-                        <span className="font-semibold text-slate-100">
-                          {(doc.financialSummary as any)?.nmck || doc.passport?.nmck || '—'}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Сроки исполнения */}
-                  <div className="bg-[#020617] border border-slate-700 rounded-lg p-3">
-                    <div className="text-[11px] font-bold uppercase tracking-wide text-slate-400 mb-2">
-                      ⏳ Сроки исполнения
-                    </div>
-                    {(() => {
-                      const values = result.documents.map(
-                        (doc) =>
-                          (doc.timelineSummary as any)?.deadlineExecution ||
-                          doc.passport?.deadlineExecution,
-                      );
-                      const status = getConsistency(values);
-                      return (
-                        <div className="mb-2 text-[11px] font-semibold">
-                          {status === 'match' && (
-                            <span className="text-emerald-400">✅ Сроки согласованы между документами</span>
-                          )}
-                          {status === 'mismatch' && (
-                            <span className="text-red-400">
-                              ❗ Расхождение в сроках — рекомендуется запрос разъяснений
-                            </span>
-                          )}
-                          {status === 'unknown' && (
-                            <span className="text-slate-400">Недостаточно данных для сравнения</span>
-                          )}
-                        </div>
-                      );
-                    })()}
-                    {result.documents.map((doc, idx) => (
-                      <div
-                        key={doc.filename + idx}
-                        className="flex items-center justify-between text-xs py-1 border-b border-slate-800 last:border-0"
-                      >
-                        <span className="text-slate-400 truncate max-w-[60%]">{doc.filename}</span>
-                        <span className="font-semibold text-slate-100">
-                          {(doc.timelineSummary as any)?.deadlineExecution ||
-                            doc.passport?.deadlineExecution ||
-                            '—'}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Обеспечение */}
-                  <div className="bg-[#020617] border border-slate-700 rounded-lg p-3">
-                    <div className="text-[11px] font-bold uppercase tracking-wide text-slate-400 mb-2">
-                      🔒 Обеспечение
-                    </div>
-                    {(() => {
-                      const values = result.documents.map(
-                        (doc) =>
-                          (doc.financialSummary as any)?.contractSecurity ||
-                          doc.passport?.contractSecurity,
-                      );
-                      const status = getConsistency(values);
-                      return (
-                        <div className="mb-2 text-[11px] font-semibold">
-                          {status === 'match' && (
-                            <span className="text-emerald-400">✅ Условия обеспечения совпадают</span>
-                          )}
-                          {status === 'mismatch' && (
-                            <span className="text-red-400">
-                              ❗ Разные условия обеспечения — возможное противоречие
-                            </span>
-                          )}
-                          {status === 'unknown' && (
-                            <span className="text-slate-400">Недостаточно данных для сравнения</span>
-                          )}
-                        </div>
-                      );
-                    })()}
-                    {result.documents.map((doc, idx) => (
-                      <div
-                        key={doc.filename + idx}
-                        className="flex items-center justify-between text-xs py-1 border-b border-slate-800 last:border-0"
-                      >
-                        <span className="text-slate-400 truncate max-w-[60%]">{doc.filename}</span>
-                        <span className="font-semibold text-slate-100">
-                          {(doc.financialSummary as any)?.contractSecurity ||
-                            doc.passport?.contractSecurity ||
-                            '—'}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
+              <div className="relative mb-8">
+                <div className="absolute inset-0 bg-[#00d4ff] blur-[40px] opacity-20 rounded-full"></div>
+                <div className="inline-flex items-center justify-center w-24 h-24 bg-[#1a1f2e] rounded-2xl border border-[#2a3441] shadow-2xl relative z-10">
+                  <Upload className="text-[#00d4ff]" size={40} />
                 </div>
               </div>
-            )}
+              <h3 className="text-2xl font-bold text-white mb-3">Загрузите пакет документов</h3>
+              <p className="text-slate-400 max-w-md mx-auto leading-relaxed mb-4">
+                Поддерживаются форматы PDF, DOCX/DOC, TXT, RTF, XLS/XLSX. <br />
+                Можно загрузить несколько файлов одновременно.
+              </p>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded bg-[#00d4ff]/10 text-[#00d4ff] border border-[#00d4ff]/20 text-xs font-bold">
+                Активный профиль: {industry === 'UNIVERSAL' ? 'Универсальный' : industry === 'IT' ? 'IT и ПО' : industry === 'CONSTRUCTION' ? 'Строительство' : 'Медицина'}
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {/* File Cards */}
+              <div className="bg-[#1a1f2e] border border-[#2a3441] rounded-2xl p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-white font-bold">Загруженные документы ({files.length})</h3>
+                  <div className="flex items-center gap-2">
+                    <label className="relative cursor-pointer">
+                      <input
+                        type="file"
+                        multiple
+                        className="absolute inset-0 opacity-0 cursor-pointer"
+                        onChange={handleFilesChange}
+                        accept=".pdf,.docx,.doc,.txt,.rtf,.xls,.xlsx"
+                      />
+                      <button
+                        className="px-3 py-1.5 bg-[#00d4ff]/10 hover:bg-[#00d4ff]/20 text-[#00d4ff] border border-[#00d4ff]/30 rounded-lg text-xs font-bold transition-colors"
+                      >
+                        + Добавить файлы
+                      </button>
+                    </label>
+                    <button
+                      onClick={() => { setFiles([]); setResult(null); setError(null); }}
+                      className="p-2 hover:bg-[#2a3441] rounded-lg transition-colors text-slate-400 hover:text-white"
+                      title="Очистить все файлы"
+                    >
+                      <X size={20} />
+                    </button>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  {files.map((file, idx) => (
+                    <div key={idx} className="flex items-center gap-3 p-3 bg-[#0f1419] rounded-lg border border-[#2a3441]">
+                      <FileSearch className="text-[#00d4ff]" size={20} />
+                      <div className="flex-1">
+                        <p className="text-white text-sm font-medium">{file.name}</p>
+                        <p className="text-xs text-slate-400">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                      </div>
+                      <button
+                        onClick={() => {
+                          const newFiles = files.filter((_, i) => i !== idx);
+                          setFiles(newFiles);
+                          if (newFiles.length === 0) {
+                            setResult(null);
+                            setError(null);
+                          }
+                        }}
+                        className="p-1 hover:bg-red-500/20 rounded text-slate-400 hover:text-red-400 transition-colors"
+                        title="Удалить файл"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <button
+                  onClick={handleAnalyze}
+                  disabled={isAnalyzing || !files.length}
+                  className="w-full bg-gradient-to-r from-[#00d4ff] to-[#0099cc] text-[#0f1419] font-bold py-4 rounded-xl hover:shadow-[0_0_20px_rgba(0,212,255,0.4)] transition-all transform hover:-translate-y-0.5 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                >
+                  {isAnalyzing ? (
+                    <>
+                      <Loader2 className="animate-spin" size={20} />
+                      Анализируем пакет...
+                    </>
+                  ) : (
+                    <>
+                      Запустить комплексный аудит <ArrowRight size={20} />
+                    </>
+                  )}
+                </button>
+              </div>
 
-            {/* Детали выбранного документа */}
-            {selectedDoc && (
-              <div className="bg-[#111827] border border-[#1f2937] rounded-xl p-4">
+              {error && !rateLimitError && (
+                <div className="bg-red-500/10 border border-red-500/50 rounded-xl p-4 flex items-start gap-3">
+                  <AlertTriangle className="text-red-500 flex-shrink-0 mt-0.5" size={20} />
+                  <p className="text-red-400 text-sm">{error}</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {result && (
+            <div className="animate-fade-in space-y-6">
+              {/* Package Summary Card */}
+              <div className={`bg-[#1a1f2e] border rounded-2xl p-6 ${verdictColor(result.verdict)}`}>
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-xs uppercase tracking-wide opacity-80">Итог по пакету</span>
+                  <span className="text-xs opacity-60">ID: {result.packageId.slice(0, 8)}...</span>
+                </div>
+                <div className="text-4xl font-bold mb-2">{Math.round(result.summaryScore)} / 100</div>
+                <div className="text-base mb-3">Вердикт: {result.verdict}</div>
+                <p className="text-sm text-slate-300 mb-4">
+                  Балл рассчитывается автоматически, окончательное решение принимает специалист.
+                </p>
+                <button
+                  onClick={handleDownloadReport}
+                  className="inline-flex items-center justify-center rounded-lg border border-[#00d4ff]/60 text-[#00d4ff] px-4 py-2 text-sm hover:bg-[#00d4ff]/10 transition-colors"
+                >
+                  <FileSpreadsheet size={16} className="mr-2" />
+                  Скачать отчёт (.txt)
+                </button>
+              </div>
+              {/* Documents List */}
+              <div className="bg-[#1a1f2e] border border-[#2a3441] rounded-2xl overflow-hidden">
+                <div className="bg-[#0f1419] px-6 py-4 border-b border-[#2a3441] flex items-center justify-between">
+                  <h3 className="text-white font-bold flex items-center gap-2">
+                    <FileSearch className="text-[#00d4ff]" size={20} /> Документы пакета
+                  </h3>
+                  <span className="text-xs text-slate-400">{result.documents.length} шт.</span>
+                </div>
+                <div className="divide-y divide-[#2a3441]">
+                  {result.documents.map((doc, idx) => (
+                    <button
+                      key={doc.filename + idx}
+                      onClick={() => handleSelectDoc(idx)}
+                      className={`w-full flex items-center justify-between py-4 px-6 text-left hover:bg-[#2a3441]/50 transition-colors ${idx === selectedIndex ? 'bg-[#2a3441] border-l-4 border-[#00d4ff]' : ''
+                        }`}
+                    >
+                      <div className="flex items-center gap-3 flex-1">
+                        <ChevronRight
+                          size={16}
+                          className={idx === selectedIndex ? 'text-[#00d4ff]' : 'text-slate-500'}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="font-semibold text-white truncate mb-1">{doc.filename}</div>
+                          <div className="text-xs text-slate-400 line-clamp-2">
+                            {doc.summary || 'Краткое резюме не получено'}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3 text-right ml-4">
+                        <span className="text-sm font-bold text-white">
+                          {Math.round(doc.score)} / 100
+                        </span>
+                        <span
+                          className={`px-3 py-1 rounded-full border text-xs font-semibold ${verdictColor(
+                            doc.verdict,
+                          )}`}
+                        >
+                          {doc.verdict}
+                        </span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Global Risks */}
+              <div className="bg-[#1a1f2e] border border-[#2a3441] rounded-2xl overflow-hidden">
+                <div className="bg-[#0f1419] px-6 py-4 border-b border-[#2a3441]">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle size={18} className="text-[#f97316]" />
+                    <h3 className="font-semibold text-sm text-white">Глобальные риски по пакету</h3>
+                  </div>
+                </div>
+                <div className="p-6">
+                  {result.globalIssues.length === 0 ? (
+                    <p className="text-sm text-slate-400">Значимых глобальных несоответствий не найдено.</p>
+                  ) : (
+                    <ul className="space-y-3">
+                      {result.globalIssues.map((gi, idx) => (
+                        <li
+                          key={idx}
+                          className="border border-[#2a3441] rounded-lg p-4 bg-[#0f1419]"
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="font-semibold text-white">{gi.title}</span>
+                            <span className="text-xs px-3 py-1 rounded-full border border-[#2a3441] text-slate-200 bg-[#1a1f2e]">
+                              {gi.severity}
+                            </span>
+                          </div>
+                          <p className="text-sm text-slate-300">{gi.description}</p>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
+
+              {/* Selected Document Details */}
+              {selectedDoc && (
+                <div className="bg-[#1a1f2e] border border-[#2a3441] rounded-2xl p-6">
                 <h3 className="font-semibold text-sm mb-2">Детальный анализ: {selectedDoc.filename}</h3>
                 <p className="text-xs text-slate-300 mb-3">{selectedDoc.summary}</p>
 
@@ -784,54 +750,6 @@ const ComplexAudit: React.FC<ComplexAuditProps> = ({ onSelectForCalculator, onOp
                     </div>
                   )}
 
-                  {/* Структурированные ответы на 25 вопросов */}
-                  {selectedDoc.structuredAnswers && Object.keys(selectedDoc.structuredAnswers).length > 0 && (
-                    <div className="mt-4 border border-[#1f2937] rounded-lg bg-slate-900/40 p-3">
-                      <div className="flex items-center gap-2 mb-3">
-                        <FileSpreadsheet size={14} className="text-[#00d4ff]" />
-                        <span className="text-xs font-semibold">Структурированный анализ по чек-листу</span>
-                      </div>
-                      <div className="space-y-2 text-xs max-h-96 overflow-y-auto">
-                        {[
-                          { key: 'customer', label: '1. Заказчик (ИНН, ОГРН, местонахождение)' },
-                          { key: 'subject', label: '2. Предмет закупки' },
-                          { key: 'nmck', label: '3. Начальная (максимальная) цена контракта' },
-                          { key: 'applicationDeadline', label: '4. Сроки подачи заявок' },
-                          { key: 'executionDeadline', label: '5. Сроки исполнения контракта' },
-                          { key: 'participantRequirements', label: '6. Требования к участникам' },
-                          { key: 'securityAmounts', label: '7. Обеспечительные суммы' },
-                          { key: 'paymentTerms', label: '8. Условия оплаты' },
-                          { key: 'evaluationCriteria', label: '9. Критерии оценки заявок' },
-                          { key: 'contradictions', label: '10. Противоречия и неоднозначности' },
-                          { key: 'penalties', label: '11. Штрафы и санкции' },
-                          { key: 'guarantees', label: '12. Гарантии и сервисное обслуживание' },
-                          { key: 'additionalRequirements', label: '13. Дополнительные требования' },
-                          { key: 'tenderRisks', label: '14. Риски изменения/отмены тендера' },
-                          { key: 'documentationRequirements', label: '15. Требования по оформлению документов' },
-                          { key: 'financialRequirements', label: '16. Требования к финансовому положению' },
-                          { key: 'confidentiality', label: '17. Условия конфиденциальности' },
-                          { key: 'customerHistory', label: '18. История заказчика' },
-                          { key: 'subcontractingLimits', label: '19. Ограничения по субподряду' },
-                          { key: 'conflictsOfInterest', label: '20. Конфликты интересов' },
-                          { key: 'discriminationSigns', label: '21. Признаки дискриминации' },
-                          { key: 'terminationConditions', label: '22. Условия расторжения и изменения' },
-                          { key: 'competitionLevel', label: '23. Уровень конкуренции' },
-                          { key: 'insuranceRequirements', label: '24. Требования к страхованию' },
-                          { key: 'additionalRisks', label: '25. Дополнительные риски и особенности' },
-                        ].map(({ key, label }) => {
-                          const answer = selectedDoc.structuredAnswers?.[key as keyof typeof selectedDoc.structuredAnswers];
-                          if (!answer || answer === 'Не указано' || answer === 'Не найдено') return null;
-                          return (
-                            <div key={key} className="border border-slate-700/80 rounded-md p-2 bg-slate-950/40">
-                              <div className="text-[10px] font-semibold text-slate-400 mb-1">{label}</div>
-                              <div className="text-[11px] text-slate-200 leading-relaxed whitespace-pre-line">{answer}</div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-
                   <p className="mt-3 text-[10px] text-slate-500">
                     Система даёт аналитическую оценку и рекомендации. Решение об участии и
                     ответственность остаются за специалистом.
@@ -839,13 +757,61 @@ const ComplexAudit: React.FC<ComplexAuditProps> = ({ onSelectForCalculator, onOp
                 </div>
               </div>
             )}
-          </>
-        ) : (
-          <div className="h-full flex items-center justify-center text-slate-500 text-sm text-center max-w-md mx-auto">
-            Загрузите пакет документов слева и запустите анализ, чтобы увидеть предварительную
-            оценку рисков по закупке. Окончательное решение всегда принимает специалист.
+            </div>
+          )}
+        </div>
+
+        {/* RIGHT: Chat Panel */}
+        <div className="w-96 bg-[#1a1f2e] border border-[#2a3441] rounded-2xl flex flex-col overflow-hidden">
+          <div className="bg-[#0f1419] px-6 py-4 border-b border-[#2a3441]">
+            <h3 className="text-white font-bold flex items-center gap-2">
+              <Zap className="text-[#00d4ff]" size={20} /> SINAPS AI
+            </h3>
+            <p className="text-slate-400 text-xs mt-1">Интеллектуальный помощник</p>
           </div>
-        )}
+
+          <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
+            {messages.map((msg) => (
+              <div
+                key={msg.id}
+                className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+              >
+                <div
+                  className={`max-w-[85%] rounded-xl px-4 py-2 ${msg.role === 'user'
+                    ? 'bg-[#00d4ff] text-[#0f1419]'
+                    : 'bg-[#2a3441] text-white'
+                    }`}
+                >
+                  <p className="text-base whitespace-pre-wrap">{msg.text}</p>
+                  <p className={`text-xs mt-1 ${msg.role === 'user' ? 'text-[#0f1419]/70' : 'text-slate-400'}`}>
+                    {msg.timestamp.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+                  </p>
+                </div>
+              </div>
+            ))}
+            <div ref={chatEndRef} />
+          </div>
+
+          <div className="p-4 border-t border-[#2a3441] bg-[#0f1419]">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={inputMsg}
+                onChange={(e) => setInputMsg(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
+                placeholder="Задайте вопрос..."
+                className="flex-1 bg-[#1a1f2e] border border-[#2a3441] rounded-lg px-4 py-2 text-white text-sm focus:outline-none focus:border-[#00d4ff]"
+              />
+              <button
+                onClick={handleSendMessage}
+                disabled={!inputMsg.trim()}
+                className="px-4 py-2 bg-[#00d4ff] text-[#0f1419] rounded-lg font-bold hover:bg-[#00b8e6] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                <ArrowRight size={18} />
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
