@@ -1,7 +1,7 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException, Form, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Any
 import shutil
 import os
 import logging
@@ -27,9 +27,9 @@ TRIAL_IP_WINDOW_DAYS = 30           # считаем за последние 30 
 # --- КОНФИГУРАЦИЯ МОДЕЛЕЙ ДЛЯ FAILOVER ---
 # Список моделей по приоритету: от быстрой к надежной
 OLLAMA_MODELS = [
-    "qwen2.5-coder:7b",      # Основная (установлена, хорошее качество)
-    "mistral:7b-instruct-q4_K_M",  # Резерв 1 (установлена, надежная)
-    "qwen2.5:0.5b",          # Резерв 2 (если установлена)
+    "qwen2.5:0.5b",  # Основная (быстрая)
+    "llama3:8b",     # Резерв 1 (умная)
+    "mistral:7b",    # Резерв 2 (надежная)
 ]
 
 # --- ИМПОРТЫ ---
@@ -51,6 +51,7 @@ from database import (
     engine,
     DemoSession,
     GeneratedDocument,
+    PasswordResetToken,
 )
 from rag_engine import get_law_snippets
 from auth import (
@@ -62,7 +63,7 @@ from auth import (
     get_user_by_email
 )
 import schemas
-from schemas import UserCreate, UserResponse, UserLogin, Token, AnalysisResponse, CompanyProfile
+from schemas import UserCreate, UserResponse, UserLogin, Token, AnalysisResponse, CompanyProfile, ForgotPasswordRequest, ResetPasswordRequest
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 from fastapi import Depends, status
@@ -572,6 +573,135 @@ async def read_users_me(current_user: User = Depends(get_current_active_user)):
     return current_user
 
 
+@app.post("/api/auth/forgot-password", status_code=status.HTTP_200_OK)
+async def forgot_password(
+    request_data: ForgotPasswordRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Запрос на сброс пароля. Отправляет email со ссылкой для сброса пароля.
+    Для безопасности всегда возвращает успех, даже если email не найден.
+    """
+    try:
+        user = get_user_by_email(db, request_data.email)
+        
+        # Для безопасности всегда возвращаем успех, даже если пользователь не найден
+        # Это предотвращает перебор email-адресов
+        if not user:
+            logger.info(f"Запрос сброса пароля для несуществующего email: {request_data.email}")
+            return {"message": "Если указанный email зарегистрирован, на него будет отправлена инструкция по сбросу пароля"}
+        
+        # Генерируем уникальный токен
+        import secrets
+        reset_token = secrets.token_urlsafe(32)
+        
+        # Удаляем старые неиспользованные токены для этого пользователя
+        db.query(PasswordResetToken).filter(
+            PasswordResetToken.user_id == user.id,
+            PasswordResetToken.used == False,
+            PasswordResetToken.expires_at > datetime.utcnow()
+        ).delete()
+        
+        # Создаём новый токен (действителен 1 час)
+        expires_at = datetime.utcnow() + timedelta(hours=1)
+        reset_token_obj = PasswordResetToken(
+            user_id=user.id,
+            token=reset_token,
+            expires_at=expires_at,
+            used=False
+        )
+        db.add(reset_token_obj)
+        db.commit()
+        
+        # Отправляем email
+        try:
+            from email_service import EmailService
+            EmailService.send_password_reset_email(
+                email=user.email,
+                name=user.name,
+                reset_token=reset_token
+            )
+            logger.info(f"✅ Письмо для сброса пароля отправлено: {user.email}")
+        except Exception as e:
+            logger.error(f"❌ Ошибка отправки письма для сброса пароля: {e}")
+            # Не возвращаем ошибку пользователю, чтобы не раскрывать информацию
+        
+        return {"message": "Если указанный email зарегистрирован, на него будет отправлена инструкция по сбросу пароля"}
+        
+    except Exception as e:
+        db.rollback()
+        logger.error(f"❌ Ошибка при запросе сброса пароля: {e}")
+        # Всегда возвращаем успех для безопасности
+        return {"message": "Если указанный email зарегистрирован, на него будет отправлена инструкция по сбросу пароля"}
+
+
+@app.post("/api/auth/reset-password", status_code=status.HTTP_200_OK)
+async def reset_password(
+    request_data: ResetPasswordRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Сброс пароля по токену из email.
+    """
+    try:
+        # Находим токен
+        reset_token_obj = db.query(PasswordResetToken).filter(
+            PasswordResetToken.token == request_data.token,
+            PasswordResetToken.used == False
+        ).first()
+        
+        if not reset_token_obj:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Неверный или недействительный токен сброса пароля"
+            )
+        
+        # Проверяем срок действия
+        if datetime.utcnow() > reset_token_obj.expires_at:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Срок действия ссылки для сброса пароля истёк. Запросите новую ссылку."
+            )
+        
+        # Получаем пользователя
+        user = db.query(User).filter(User.id == reset_token_obj.user_id).first()
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Пользователь не найден"
+            )
+        
+        # Проверяем длину пароля (bcrypt ограничение 72 байта)
+        raw_password = (request_data.new_password or "").strip()
+        if len(raw_password.encode("utf-8")) > 72:
+            logger.warning("Пароль при сбросе длиннее 72 байт, выполняем безопасное усечение")
+            raw_bytes = raw_password.encode("utf-8")[:72]
+            raw_password = raw_bytes.decode("utf-8", errors="ignore")
+        
+        # Обновляем пароль
+        user.hashed_password = get_password_hash(raw_password)
+        
+        # Помечаем токен как использованный
+        reset_token_obj.used = True
+        
+        db.commit()
+        db.refresh(user)
+        
+        logger.info(f"✅ Пароль успешно сброшен для пользователя: {user.email}")
+        
+        return {"message": "Пароль успешно изменён. Теперь вы можете войти с новым паролем."}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"❌ Ошибка при сбросе пароля: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Ошибка при сбросе пароля. Попробуйте позже или запросите новую ссылку."
+        )
+
+
 @app.get("/api/profile", response_model=schemas.ProfileResponse)
 async def get_profile(
     current_user: User = Depends(get_current_active_user),
@@ -720,22 +850,165 @@ async def mock_payment_confirm(
 
 # --- УТИЛИТЫ (REGEX) ---
 def extract_price_regex(text):
-    """Находит цену, если ИИ ошибся"""
-    matches = re.findall(r'(\d[\d\s]*[.,]?\d*)\s?(?:руб|₽|RUB)', text, re.IGNORECASE)
-    if matches:
+    """Находит цену, если ИИ ошибся. Улучшенная версия с поддержкой млн/тыс."""
+    # Очищаем текст от лишних пробелов для лучшего поиска
+    text_clean = re.sub(r'\s+', ' ', text)
+    
+    # Ищем НМЦК, начальную цену, цену контракта
+    patterns = [
+        r'нмцк[^\d]{0,200}?(\d[\d\s]*[.,]?\d*)\s*(?:млн|тыс|руб|₽|rur|rub)',
+        r'нмцд[^\d]{0,200}?(\d[\d\s]*[.,]?\d*)\s*(?:млн|тыс|руб|₽|rur|rub)',
+        r'начальн[ая]*\s*(?:максимальн[ая]*)?\s*цен[аи][^\d]{0,200}?(\d[\d\s]*[.,]?\d*)\s*(?:млн|тыс|руб|₽|rur|rub)',
+        r'цен[аи]\s*контракт[а]?[^\d]{0,200}?(\d[\d\s]*[.,]?\d*)\s*(?:млн|тыс|руб|₽|rur|rub)',
+        r'стоимость[^\d]{0,200}?(\d[\d\s]*[.,]?\d*)\s*(?:млн|тыс|руб|₽|rur|rub)',
+        r'сумм[аи]\s*контракт[а]?[^\d]{0,200}?(\d[\d\s]*[.,]?\d*)\s*(?:млн|тыс|руб|₽|rur|rub)',
+        r'общая\s+стоимость[^\d]{0,200}?(\d[\d\s]*[.,]?\d*)\s*(?:млн|тыс|руб|₽|rur|rub)',
+        r'итого[^\d]{0,200}?(\d[\d\s]*[.,]?\d*)\s*(?:млн|тыс|руб|₽|rur|rub)',
+        r'обоснован[ия]*\s*цен[ы]?[^\d]{0,200}?(\d[\d\s]*[.,]?\d*)\s*(?:млн|тыс|руб|₽|rur|rub)',
+    ]
+    
+    all_prices = []
+    for pattern in patterns:
+        matches = re.finditer(pattern, text_clean, re.IGNORECASE)
+        for match in matches:
+            value_str = match.group(1).replace(' ', '').replace(',', '.').strip()
+            context = text_clean[max(0, match.start()-50):match.end()+50].lower()
+            
+            try:
+                value = float(value_str)
+                # Проверяем множитель (млн, тыс)
+                if 'млн' in context:
+                    value *= 1_000_000
+                elif 'тыс' in context:
+                    value *= 1_000
+                all_prices.append(value)
+            except ValueError:
+                continue
+    
+    # Также ищем простые паттерны с рублями (только большие суммы)
+    simple_matches = re.findall(r'(\d[\d\s]{3,}[.,]?\d*)\s*(?:руб|₽|RUB|rur|rub)', text_clean, re.IGNORECASE)
+    for m in simple_matches:
         try:
-            prices = [float(m.replace(' ', '').replace(',', '.').strip()) for m in matches if m.strip()]
-            if prices:
-                return f"{max(prices):,.2f} ₽".replace(',', ' ').replace('.', ',')
-        except Exception:
-            pass
+            price = float(m.replace(' ', '').replace(',', '.').strip())
+            # Игнорируем слишком маленькие суммы (меньше 1000 руб) - это не НМЦК
+            if price >= 1000:
+                all_prices.append(price)
+        except ValueError:
+            continue
+    
+    # Ищем числа в таблицах и структурированных данных
+    # Паттерн для чисел с пробелами как разделителями тысяч
+    table_patterns = re.findall(r'(\d{1,3}(?:\s+\d{3})*(?:[.,]\d+)?)\s*(?:млн|тыс|руб|₽)', text_clean, re.IGNORECASE)
+    for m in table_patterns:
+        try:
+            price_str = m.replace(' ', '').replace(',', '.').strip()
+            price = float(price_str)
+            # Проверяем контекст на множители
+            context_idx = text_clean.lower().find(m.lower())
+            if context_idx >= 0:
+                context = text_clean[max(0, context_idx-50):context_idx+len(m)+50].lower()
+                if 'млн' in context:
+                    price *= 1_000_000
+                elif 'тыс' in context:
+                    price *= 1_000
+            if price >= 1000:
+                all_prices.append(price)
+        except ValueError:
+            continue
+    
+    if all_prices:
+        # Берем максимальную цену (обычно это НМЦК)
+        max_price = max(all_prices)
+        if max_price >= 1_000_000:
+            return f"{max_price/1_000_000:,.2f} млн ₽".replace(',', ' ').replace('.', ',')
+        elif max_price >= 1_000:
+            return f"{max_price/1_000:,.2f} тыс ₽".replace(',', ' ').replace('.', ',')
+        else:
+            return f"{max_price:,.2f} ₽".replace(',', ' ').replace('.', ',')
+    
     return "Не найдено"
 
 
 def extract_dates_regex(text):
-    """Находит дедлайны"""
+    """Находит дедлайны. Улучшенная версия с контекстом."""
+    # Ищем даты в контексте "срок подачи", "крайний срок", "до"
+    deadline_patterns = [
+        r'срок\s+подачи\s+заявк[и]?[^\d]{0,50}?(\d{2}[./-]\d{2}[./-]\d{4})',
+        r'крайн[ий]*\s+срок[^\d]{0,50}?(\d{2}[./-]\d{2}[./-]\d{4})',
+        r'до\s+(\d{2}[./-]\d{2}[./-]\d{4})',
+        r'дата\s+окончания[^\d]{0,50}?(\d{2}[./-]\d{2}[./-]\d{4})',
+        r'приём\s+заявок[^\d]{0,50}?(\d{2}[./-]\d{2}[./-]\d{4})',
+    ]
+    
+    for pattern in deadline_patterns:
+        match = re.search(pattern, text, re.IGNORECASE)
+        if match:
+            date_str = match.group(1)
+            # Нормализуем формат
+            date_str = date_str.replace('/', '.').replace('-', '.')
+            return date_str
+    
+    # Если не нашли в контексте, ищем любые даты
     matches = re.findall(r'\d{2}[./-]\d{2}[./-]\d{4}', text)
-    return matches[-1] if matches else "См. документацию"
+    if matches:
+        # Берем последнюю (обычно это дедлайн)
+        date_str = matches[-1].replace('/', '.').replace('-', '.')
+        return date_str
+    
+    return "См. документацию"
+
+
+def extract_onmck_summary(text: str) -> dict:
+    """Извлекает НМЦК из обоснования НМЦК/НМЦД.
+    
+    Ищет НМЦК в различных форматах и контекстах. Агрессивный поиск.
+    """
+    summary: dict = {}
+    # Очищаем текст от лишних пробелов
+    text_clean = re.sub(r'\s+', ' ', text)
+    tl = text_clean.lower()
+    
+    # Ищем НМЦК в разных контекстах (более агрессивные паттерны)
+    nmck_patterns = [
+        r'нмцк[^\d]{0,300}?(\d[\d\s]*[.,]?\d*)\s*(?:млн|тыс|руб|₽|rur|rub)',
+        r'нмцд[^\d]{0,300}?(\d[\d\s]*[.,]?\d*)\s*(?:млн|тыс|руб|₽|rur|rub)',
+        r'начальн[ая]*\s*(?:максимальн[ая]*)?\s*цен[аи]\s*контракт[а]?[^\d]{0,300}?(\d[\d\s]*[.,]?\d*)\s*(?:млн|тыс|руб|₽|rur|rub)',
+        r'обоснован[ия]*\s*(?:нмцк|нмцд|цен[ы]?)[^\d]{0,300}?(\d[\d\s]*[.,]?\d*)\s*(?:млн|тыс|руб|₽|rur|rub)',
+        r'итого[^\d]{0,300}?(\d[\d\s]*[.,]?\d*)\s*(?:млн|тыс|руб|₽|rur|rub)',
+        r'общая\s+стоимость[^\d]{0,300}?(\d[\d\s]*[.,]?\d*)\s*(?:млн|тыс|руб|₽|rur|rub)',
+        r'сумм[аи]\s*(?:контракт[а]?|закупк[и]?)[^\d]{0,300}?(\d[\d\s]*[.,]?\d*)\s*(?:млн|тыс|руб|₽|rur|rub)',
+    ]
+    
+    all_prices = []
+    for pattern in nmck_patterns:
+        matches = re.finditer(pattern, text_clean, re.IGNORECASE)
+        for match in matches:
+            value_str = match.group(1).replace(' ', '').replace(',', '.').strip()
+            context = text_clean[max(0, match.start()-100):match.end()+100].lower()
+            
+            try:
+                value = float(value_str)
+                # Проверяем множитель (млн, тыс)
+                if 'млн' in context:
+                    value *= 1_000_000
+                elif 'тыс' in context:
+                    value *= 1_000
+                all_prices.append(value)
+            except ValueError:
+                continue
+    
+    if all_prices:
+        # Берем максимальную цену (обычно это НМЦК)
+        max_price = max(all_prices)
+        if max_price >= 1_000_000:
+            summary["nmck"] = f"{max_price/1_000_000:,.2f} млн ₽".replace(',', ' ').replace('.', ',')
+        elif max_price >= 1_000:
+            summary["nmck"] = f"{max_price/1_000:,.2f} тыс ₽".replace(',', ' ').replace('.', ',')
+        else:
+            summary["nmck"] = f"{max_price:,.2f} ₽".replace(',', ' ').replace('.', ',')
+        summary["nmckNumeric"] = max_price
+    
+    return summary
 
 
 def _parse_amount(value: str) -> Optional[float]:
@@ -1132,9 +1405,9 @@ def _safe_ollama_invoke(prompt: str, format_json: bool = True) -> str:
     Безопасный вызов Ollama с каскадным переключением между моделями.
     
     Пытается использовать модели по приоритету:
-    1. qwen2.5-coder:7b (основная, хорошее качество)
-    2. mistral:7b-instruct-q4_K_M (резерв, надежная)
-    3. qwen2.5:0.5b (резерв, если установлена)
+    1. qwen2.5:0.5b (быстрая)
+    2. llama3:8b (умная)
+    3. mistral:7b (надежная)
     
     Args:
         prompt: Промпт для отправки в LLM
@@ -1158,7 +1431,7 @@ def _safe_ollama_invoke(prompt: str, format_json: bool = True) -> str:
                 "model": model_name,
                 "base_url": settings.OLLAMA_BASE_URL,
                 "temperature": 0.1,  # Низкая температура для стабильности
-                "timeout": 180,  # 3 минуты таймаут (уменьшено для быстрой обратной связи)
+                "timeout": 300,  # 5 минут таймаут
             }
             
             # Добавляем формат JSON только если нужно
@@ -1268,7 +1541,7 @@ async def analyze_single_file(temp_path: str, filename: str, industry: str) -> d
                     row_count = 0
                     for row in ws.iter_rows(values_only=True):
                         row_count += 1
-                        if row > 500:
+                        if row_count > 500:
                             chunks.append("... (дальнейшие строки опущены)")
                             break
                         cells = [str(v) for v in row if v not in (None, "")]
@@ -1363,97 +1636,124 @@ async def analyze_single_file(temp_path: str, filename: str, industry: str) -> d
 
     # 3b. МЕГА-ПРОМПТ (Паспорт, Риски, Спецификация + RAG-контекст)
     prompt = f"""
-    Ты — эксперт по тендерам. Проанализируй документ и ответь на вопросы. Пиши для директора, не для юриста.
+    Ты — Главный Эксперт Тендерного Отдела. Твоя задача — полный аудит документа.
     Специфика: {industry_context}
     
     {industry_checks}
 
-    {("Выдержки из законов:\n" + law_context_block[:2000]) if law_context_block else ""}
+    {("Выдержки из нормативных актов для учёта при анализе:\n" + law_context_block) if law_context_block else ""}
 
-    ОТВЕТЬ НА ВОПРОСЫ (если нет данных — "Не указано"):
-    1. Заказчик (ИНН, ОГРН, адрес)
-    2. Предмет закупки
-    3. НМЦК (цена)
-    4. Сроки подачи заявок
-    5. Сроки исполнения
-    6. Требования к участникам (лицензии, опыт)
-    7. Обеспечения (заявка/контракт)
-    8. Условия оплаты
-    9. Критерии оценки
-    10. Противоречия в документах
-    11. Штрафы и санкции
-    12. Гарантии и сервис
-    13. Доп. требования (поставка, монтаж)
-    14. Риски отмены/изменения
-    15. Требования к документам
-    16. Финансовые требования
-    17. Конфиденциальность
-    18. История заказчика (если есть)
-    19. Ограничения по субподряду
-    20. Конфликты интересов
-    21. Признаки дискриминации
-    22. Условия расторжения
-    23. Уровень конкуренции
-    24. Страхование
-    25. Доп. риски участия
-
-    ВЕРНИ JSON (только JSON, без комментариев):
+    КРИТИЧЕСКИ ВАЖНО ДЛЯ ИЗВЛЕЧЕНИЯ ДАННЫХ:
+    - НМЦК: ищи ВЕЗДЕ - "НМЦК", "НМЦД", "начальная (максимальная) цена контракта", "цена контракта", "стоимость", "сумма контракта", "общая стоимость", "итоговая сумма"
+    - ИЩИ в таблицах, в тексте, в заголовках, в конце документа
+    - Если документ — обоснование НМЦК/НМЦД — ОБЯЗАТЕЛЬНО найди цену!
+    - Если не найдено - верни "Не найдено" (НЕ пиши "Ищи" или другие инструкции)
+    - Описание объекта: НЕ пиши "Нет описания" - всегда анализируй документ и давай конкретное описание!
+    - Резюме: НЕ пиши "Нет описания" - всегда давай конкретное резюме на основе анализа документа!
+    
+    ВЕРНИ JSON СТРОГО ТАКОГО ФОРМАТА (НЕ ДОБАВЛЯЙ ПОЛЕЙ СВЕРХ УКАЗАННЫХ):
     {{
-        "summary": "Суть закупки (1-2 предложения)",
-        "score": число_0_100,
-        "passport": {{"nmck": "цена", "region": "место", "fz": "44-ФЗ/223-ФЗ", "deadlineApp": "дата", "bidSecurity": "обеспечение заявки", "contractSecurity": "обеспечение контракта"}},
-        "issues": [{{"title": "риск", "severity": "HIGH/MEDIUM/LOW", "description": "почему опасно", "quote": "цитата", "lawReference": "статья"}}],
-        "specs": [{{"name": "товар", "qty": "количество", "details": "характеристики"}}],
-        "redFlags": [{{"code": "IT_BRAND_ONLY/TIME_UNREAL/OTHER", "title": "название", "severity": "HIGH/MEDIUM/LOW", "lawReference": "статья", "explanation": "что нарушено", "quote": "цитата"}}],
-        "financialSummary": {{"nmck": "НМЦК", "advance": "аванс", "bidSecurity": "обеспечение заявки", "contractSecurity": "обеспечение контракта", "paymentTerms": "условия оплаты"}},
-        "timelineSummary": {{"deadlineApp": "срок подачи", "deadlineExecution": "срок исполнения", "timelineRisk": "оценка сроков"}},
-        "participantRequirements": {{"licenses": ["лицензии"], "experienceRequired": "требования к опыту", "overallBarrier": "HIGH/MEDIUM/LOW"}},
-        "summaryBlocks": {{"money": {{"status": "GREEN/YELLOW/RED", "comment": "вывод"}}, "time": {{"status": "GREEN/YELLOW/RED", "comment": "вывод"}}, "barriers": {{"status": "GREEN/YELLOW/RED", "comment": "вывод"}}, "traps": {{"status": "GREEN/YELLOW/RED", "comment": "вывод"}}}},
-        "actions": [{{"type": "ASK_CLARIFICATION/PARTICIPATE/SKIP", "priority": 1, "text": "действие"}}],
-        "structuredAnswers": {{
-            "customer": "ответ на вопрос 1",
-            "subject": "ответ на вопрос 2",
-            "nmck": "ответ на вопрос 3",
-            "applicationDeadline": "ответ на вопрос 4",
-            "executionDeadline": "ответ на вопрос 5",
-            "participantRequirements": "ответ на вопрос 6",
-            "securityAmounts": "ответ на вопрос 7",
-            "paymentTerms": "ответ на вопрос 8",
-            "evaluationCriteria": "ответ на вопрос 9",
-            "contradictions": "ответ на вопрос 10",
-            "penalties": "ответ на вопрос 11",
-            "guarantees": "ответ на вопрос 12",
-            "additionalRequirements": "ответ на вопрос 13",
-            "tenderRisks": "ответ на вопрос 14",
-            "documentationRequirements": "ответ на вопрос 15",
-            "financialRequirements": "ответ на вопрос 16",
-            "confidentiality": "ответ на вопрос 17",
-            "customerHistory": "ответ на вопрос 18",
-            "subcontractingLimits": "ответ на вопрос 19",
-            "conflictsOfInterest": "ответ на вопрос 20",
-            "discriminationSigns": "ответ на вопрос 21",
-            "terminationConditions": "ответ на вопрос 22",
-            "competitionLevel": "ответ на вопрос 23",
-            "insuranceRequirements": "ответ на вопрос 24",
-            "additionalRisks": "ответ на вопрос 25"
-        }}
+        "summary": "Краткая суть закупки (1-2 предложения). ОБЯЗАТЕЛЬНО: НЕ пиши 'Нет описания' - всегда давай конкретное резюме!",
+        "score": (Оценка безопасности 0-100. Штрафы >1% или размытое ТЗ = низкий балл),
+        "passport": {{
+            "nmck": "Цена контракта (число + валюта). ИЩИ ВЕЗДЕ: 'НМЦК', 'НМЦД', 'начальная (максимальная) цена контракта', 'цена контракта', 'стоимость', 'сумма контракта', 'общая стоимость', 'итоговая сумма'. ИЩИ в таблицах, в тексте, в заголовках. Если документ — обоснование НМЦК/НМЦД — ОБЯЗАТЕЛЬНО найди цену! Если не найдено - верни 'Не найдено'",
+            "region": "Место поставки/работ",
+            "fz": "44-ФЗ или 223-ФЗ",
+            "deadlineApp": "Дата подачи заявки",
+            "guarantee": "Обеспечение заявки/контракта (если указана одна цифра)",
+            "bidSecurity": "Обеспечение заявки (если указано отдельно)",
+            "contractSecurity": "Обеспечение контракта (если указано отдельно)"
+        }},
+        "issues": [
+            {{
+                "title": "Название риска (например: Незаконный штраф)",
+                "severity": "HIGH" | "MEDIUM" | "LOW",
+                "description": "Пояснение, почему это опасно. Ссылка на закон.",
+                "quote": "Точная цитата из текста документа"
+            }}
+        ],
+        "specs": [
+            {{
+                "name": "Наименование товара/работы",
+                "qty": "Количество (шт, кг, м2)",
+                "details": "Ключевые характеристики (ГОСТ, размеры)"
+            }}
+        ],
+        "redFlags": [
+            {{
+                "code": "IT_BRAND_ONLY" | "TIME_UNREAL" | "PRICE_DUMPING" | "MIXED_LOT" | "OTHER",
+                "title": "Краткое название красного флага",
+                "severity": "HIGH" | "MEDIUM" | "LOW",
+                "lawReference": "Статья закона / практика ФАС (если есть)",
+                "explanation": "Что именно нарушено или почему это опасно",
+                "quote": "Ключевая цитата из документа"
+            }}
+        ],
+        "financialSummary": {{
+            "nmck": "Строка с НМЦК",
+            "estimatedCost": "Оценочная себестоимость (если удаётся понять)",
+            "marginComment": "Краткий комментарий по марже и финансовым рискам",
+            "advance": "Аванс (например: 30% или Нет)",
+            "bidSecurity": "Обеспечение заявки (например: 1% от НМЦК)",
+            "contractSecurity": "Обеспечение контракта (например: 10% от НМЦК)",
+            "paymentTerms": "Условия и сроки оплаты (например: оплата в течение 7/30/60 дней...)"
+        }},
+        "timelineSummary": {{
+            "deadlineApp": "Крайний срок подачи заявки",
+            "deadlineExecution": "Срок исполнения контракта (если есть)",
+            "contractDuration": "Срок действия контракта (например: 12 месяцев), если можно определить",
+            "timelineRisk": "Краткий комментарий: реалистичные/сомнительные/нереальные сроки"
+        }},
+        "participantRequirements": {{
+            "licenses": ["Перечень требуемых лицензий и допусков, если есть"],
+            "experienceRequired": "Текстовое описание требований к опыту / объёму выполненных контрактов",
+            "nationalRegime": "Краткое описание ограничений по нацрежиму (запрет иностранного товара и т.п.)",
+            "overallBarrier": "HIGH | MEDIUM | LOW — суммарная оценка барьеров для участия"
+        }},
+        "summaryBlocks": {{
+            "money": {{
+                "status": "GREEN | YELLOW | RED",
+                "comment": "Краткий вывод по деньгам (аванс, обеспечения, оплата)"
+            }},
+            "time": {{
+                "status": "GREEN | YELLOW | RED",
+                "comment": "Краткий вывод по срокам и реалистичности"
+            }},
+            "barriers": {{
+                "status": "GREEN | YELLOW | RED",
+                "comment": "Краткий вывод по требованиям к участнику (лицензии, опыт, нацрежим)"
+            }},
+            "traps": {{
+                "status": "GREEN | YELLOW | RED",
+                "comment": "Краткий вывод по скрытым ловушкам в ТЗ и договоре"
+            }}
+        }},
+        "actions": [
+            {{
+                "type": "ASK_CLARIFICATION" | "FILE_FAS_COMPLAINT" | "PARTICIPATE" | "SKIP",
+                "priority": 1,
+                "text": "Конкретное рекомендованное действие в 1-2 предложениях"
+            }}
+        ]
     }}
 
-    Текст документа (первые 15000 символов):
-    {text[:15000]}
+    ВАЖНО:
+    - Не нарушай формат JSON.
+    - Не добавляй комментарии вне JSON.
+    - В поле 'specs' вытащи до 15 ключевых позиций ТЗ (Таблица товаров).
+
+    Текст документа:
+    {text[:18000]}
     """
 
-    logger.info(f"Отправка в Ollama с failover... (длина промпта: {len(prompt)} символов)")
-    import time
-    start_time = time.time()
+    logger.info("Отправка в Ollama с failover...")
     response_json = None
     try:
         # Используем безопасный вызов с переключением моделей
         response_json = _safe_ollama_invoke(prompt)
-        elapsed = time.time() - start_time
         if not response_json:
             raise ValueError("Пустой ответ от Ollama")
-        logger.info(f"✅ Получен ответ от Ollama за {elapsed:.1f}с (длина: {len(response_json)} символов)")
+        logger.info(f"✅ Получен ответ от Ollama (длина: {len(response_json)} символов)")
         logger.debug(f"Первые 200 символов ответа: {response_json[:200]}")
     except HTTPException:
         # Пробрасываем HTTPException как есть (это наша ошибка 503)
@@ -1550,21 +1850,48 @@ async def analyze_single_file(temp_path: str, filename: str, industry: str) -> d
         ai_data = {"summary": "Анализ выполнен (текстовый режим, ошибка обработки)", "issues": [], "specs": []}
 
     # 5. Обогащение данными (Regex + AI)
-    regex_price = extract_price_regex(text[:5000])
+    # Определяем тип документа для более агрессивного поиска НМЦК
+    filename_lower = filename.lower()
+    is_onmck_doc = any(k in filename_lower for k in ["нмцк", "нмцд", "обоснование", "онмцк", "онмцд"])
+    text_lower = text.lower()
+    is_onmck_content = any(k in text_lower[:5000] for k in ["обоснование нмцк", "обоснование нмцд", "обоснование начальной", "обоснование цены"])
+    
+    # Инициализируем переменные
+    onmck_summary: dict = {}
+    regex_price = "Не найдено"
+    
+    # Для обоснований НМЦК ищем в большем объеме текста
+    if is_onmck_doc or is_onmck_content:
+        # Для обоснований ищем во всем тексте
+        onmck_summary = extract_onmck_summary(text)
+        if onmck_summary.get("nmck"):
+            regex_price = onmck_summary["nmck"]
+            logger.info(f"✅ НМЦК извлечена из обоснования: {regex_price}")
+        else:
+            regex_price = extract_price_regex(text)  # Весь текст для обоснований
+            logger.info(f"🔍 Поиск НМЦК в обосновании (regex): найдено={regex_price}")
+    else:
+        regex_price = extract_price_regex(text[:10000])  # Увеличил до 10000 для всех документов
+    
     final_nmck = ai_data.get("passport", {}).get("nmck")
-    if not final_nmck or "Ищи" in str(final_nmck):
-        final_nmck = regex_price
+    
+    # Приоритет: обоснование НМЦК > LLM > regex fallback
+    if is_onmck_doc or is_onmck_content:
+        if onmck_summary.get("nmck"):
+            final_nmck = onmck_summary["nmck"]
+        elif not final_nmck or final_nmck in ["Не найдено", "Не указано"] or "Ищи" in str(final_nmck):
+            final_nmck = regex_price if regex_price and regex_price != "Не найдено" else "Не найдено"
+    elif not final_nmck or final_nmck in ["Не найдено", "Не указано"] or "Ищи" in str(final_nmck):
+        final_nmck = regex_price if regex_price and regex_price != "Не найдено" else "Не найдено"
+    
+    # Логируем результат для отладки
+    logger.info(f"📄 Документ {filename}: НМЦК={final_nmck}, длина текста={len(text)} символов")
 
     score = int(ai_data.get("score", 50) or 50)
     verdict = "STOP" if score < 40 else ("CAUTION" if score < 80 else "PARTICIPATE")
 
     # Финальный ответ
     issues: List[dict] = list(ai_data.get("issues", []))
-
-    # Нормализация ключей law_reference -> lawReference для единообразия
-    for issue in issues:
-        if "law_reference" in issue and "lawReference" not in issue:
-            issue["lawReference"] = issue.get("law_reference")
 
     # Отраслевые эвристики: усиливаем список рисков для конкретных сфер
     if industry == "IT":
@@ -1650,169 +1977,6 @@ async def analyze_single_file(temp_path: str, filename: str, industry: str) -> d
 
     participant_requirements = ai_data.get("participantRequirements", {})
 
-    # --- 5c. Deal Breakers (стоп-факторы) ---
-    def extract_deal_breakers(
-        issues_list: List[dict],
-        red_flags_list: List[dict],
-        participant_req: dict,
-        score_value: int,
-    ) -> List[dict]:
-        """
-        Формирует список dealBreakers на основе:
-        - красных флагов HIGH-серьёзности,
-        - экстремально низкого score,
-        - барьеров участия.
-        Формат элемента:
-        {
-            "title": str,
-            "quote": str,
-            "essence": str,
-            "status": str,
-            "lawReference": Optional[str],
-            "action": {
-                "type": "SKIP" | "FILE_FAS_COMPLAINT" | "ASK_CLARIFICATION",
-                "buttonLabel": str,
-                "justification": str,
-            }
-        }
-        """
-        deal_breakers: List[dict] = []
-
-        # 1. Красные флаги высокой серьёзности
-        for rf in red_flags_list:
-            if str(rf.get("severity", "")).upper() == "HIGH":
-                title = rf.get("title") or "Критический красный флаг"
-                law_ref = rf.get("lawReference")
-                quote = rf.get("quote") or ""
-                explanation = rf.get("explanation") or ""
-                status = f"Высокий правовой риск{f' ({law_ref})' if law_ref else ''}"
-                action_type = "SKIP"
-                button_label = "🟥 НЕ УЧАСТВОВАТЬ"
-                justification = "Риск слишком высок по сравнению с потенциальной выгодой"
-                deal_breakers.append(
-                    {
-                        "title": title,
-                        "quote": quote,
-                        "essence": explanation or "Критический риск, который может привести к серьёзным потерям.",
-                        "status": status,
-                        "lawReference": law_ref,
-                        "action": {
-                            "type": action_type,
-                            "buttonLabel": button_label,
-                            "justification": justification,
-                        },
-                    }
-                )
-
-        # 2. Очень низкий score (< 30) как общий стоп-фактор
-        if score_value < 30:
-            deal_breakers.append(
-                {
-                    "title": "Очень высокий суммарный риск по тендеру",
-                    "quote": "",
-                    "essence": "Индекс безопасности ниже 30 из 100. В документе много серьёзных рисков по деньгам, срокам и требованиям.",
-                    "status": "STOP",
-                    "lawReference": None,
-                    "action": {
-                        "type": "SKIP",
-                        "buttonLabel": "🟥 НЕ УЧАСТВОВАТЬ",
-                        "justification": "Слишком большое количество критических рисков по сравнению с потенциальной выгодой.",
-                    },
-                }
-            )
-
-        # 3. Барьеры участия (например, высокий overallBarrier)
-        overall_barrier = str(participant_req.get("overallBarrier", "")).upper()
-        if overall_barrier == "HIGH":
-            deal_breakers.append(
-                {
-                    "title": "Высокие барьеры для участия",
-                    "quote": "",
-                    "essence": "Требуются лицензии, опыт или статус, которые трудно или невозможно быстро получить. Участие может быть формально невозможно или сильно рискованно.",
-                    "status": "HIGH BARRIER",
-                    "lawReference": None,
-                    "action": {
-                        "type": "ASK_CLARIFICATION",
-                        "buttonLabel": "🔵 Запросить разъяснения",
-                        "justification": "Нужно уточнить у заказчика, допускается ли участие без всех перечисленных требований.",
-                    },
-                }
-            )
-
-        # Ограничиваем список 5 элементами, чтобы не перегружать интерфейс
-        if len(deal_breakers) > 5:
-            deal_breakers = deal_breakers[:5]
-
-        return deal_breakers
-
-    red_flags_list = list(ai_data.get("redFlags", []))
-    deal_breakers = extract_deal_breakers(issues, red_flags_list, participant_requirements, score)
-
-    # --- 5d. Финансовый удар в рублях (расширение financialSummary) ---
-    financial_summary = ai_data.get("financialSummary", {}) or {}
-    try:
-        # Пытаемся извлечь НМЦК как число из строки
-        nmck_raw = str(final_nmck or "").replace(" ", "").replace("₽", "").replace(",", ".")
-        nmck_value = None
-        for token in nmck_raw.split():
-            try:
-                nmck_value = float(token)
-                break
-            except ValueError:
-                continue
-
-        # Простейшие эвристики: если в тексте есть штраф "0.1% в день" или похожие формулировки
-        text_lower = text.lower()
-        daily_penalty_percent = 0.0
-        if "% в день" in text_lower or "%/день" in text_lower:
-            # Ищем число перед "% в день"
-            import re
-            m = re.search(r"(\d+[.,]?\d*)\s*% ?в ?день", text_lower)
-            if not m:
-                m = re.search(r"(\d+[.,]?\d*)\s*%/?день", text_lower)
-            if m:
-                try:
-                    daily_penalty_percent = float(m.group(1).replace(",", "."))
-                except ValueError:
-                    daily_penalty_percent = 0.0
-
-        penalty_risk_rubles = None
-        if nmck_value and daily_penalty_percent > 0:
-            penalty_risk_rubles = nmck_value * daily_penalty_percent / 100.0
-
-        # Кассовый разрыв — грубая эвристика: ищем упоминание 30/60 дней
-        working_capital_needed = None
-        if nmck_value:
-            if "30 дней" in text_lower:
-                working_capital_needed = nmck_value * 0.3
-            elif "60 дней" in text_lower:
-                working_capital_needed = nmck_value * 0.6
-
-        guarantee_amount = None
-        guarantee_text = str(financial_summary.get("contractSecurity") or ai_data.get("passport", {}).get("contractSecurity") or "")
-        if "%" in guarantee_text and nmck_value:
-            import re
-            gm = re.search(r"(\d+[.,]?\d*)\s*%", guarantee_text)
-            if gm:
-                try:
-                    perc = float(gm.group(1).replace(",", "."))
-                    guarantee_amount = nmck_value * perc / 100.0
-                except ValueError:
-                    guarantee_amount = None
-
-        # Формируем человеко-понятные строки
-        def fmt_rub(v: float) -> str:
-            return f"{int(v):,} ₽".replace(",", " ")
-
-        if penalty_risk_rubles is not None:
-            financial_summary["penaltyRiskRubles"] = fmt_rub(penalty_risk_rubles)
-        if working_capital_needed is not None:
-            financial_summary["workingCapitalNeeded"] = fmt_rub(working_capital_needed)
-        if guarantee_amount is not None:
-            financial_summary["guaranteeAmount"] = fmt_rub(guarantee_amount)
-    except Exception as fin_err:
-        logger.warning(f"Не удалось оценить финансовый удар в рублях: {fin_err}")
-
     result = {
         "score": score,
         "summary": ai_data.get("summary", "Нет описания"),
@@ -1828,14 +1992,12 @@ async def analyze_single_file(temp_path: str, filename: str, industry: str) -> d
         },
         "issues": issues,
         "specs": ai_data.get("specs", []),  # <-- спецификация
-        "redFlags": red_flags_list,
-        "financialSummary": financial_summary,
+        "redFlags": ai_data.get("redFlags", []),
+        "financialSummary": ai_data.get("financialSummary", {}),
         "timelineSummary": ai_data.get("timelineSummary", {}),
         "participantRequirements": participant_requirements,
         "summaryBlocks": summary_blocks,
         "actions": ai_data.get("actions", []),
-        "dealBreakers": deal_breakers,
-        "structuredAnswers": ai_data.get("structuredAnswers", {}),  # <-- структурированные ответы на 25 вопросов
     }
 
     logger.info(
@@ -1894,11 +2056,100 @@ async def analyze_endpoint(
     current_user: Optional[User] = Depends(get_optional_user),
     db: Session = Depends(get_db),
 ):
+    """
+    Новый двухступенчатый конвейер анализа (Chain of Thought):
+    1) Сбор фактов из документа (финансы, сроки, обязанности, пробелы).
+    2) "Злой аудитор" принимает решение и формирует JSON результата.
+    """
     from utils.file_validator import validate_file, validate_file_size
 
-    # --- Сначала определяем режим (авторизованный / демо) и проверяем лимиты ---
-    # Это важно делать ДО тяжелых операций с файлом, чтобы при превышении лимита
-    # сразу вернуть 429, как ожидают тесты и фронтенд.
+    class Stage1Facts(BaseModel):
+        nmck: Optional[str] = None
+        advance: Optional[str] = None
+        bid_security: Optional[str] = None
+        contract_security: Optional[str] = None
+        payment_terms: Optional[str] = None
+        deadlines: Optional[str] = None
+        obligations_customer: Optional[str] = None
+        obligations_supplier: Optional[str] = None
+        missing_items: Optional[str] = None
+        risks: Optional[str] = None
+
+    class Issue(BaseModel):
+        title: str
+        severity: str
+        description: str
+        quote: str
+        recommendation: Optional[str] = None
+
+    class AnalysisResult(BaseModel):
+        summary: str
+        score: int
+        verdict: str
+        passport: Dict[str, str]
+        issues: List[Dict] = []
+        specs: List[Dict] = []
+        executive_summary: Optional[str] = None
+        financial_analysis: Optional[Dict[str, Any]] = None
+        deal_breakers: List[str] = []
+        smart_questions: List[str] = []
+
+    def _call_llm(prompt: str, format_json: bool = True) -> str:
+        """Локальный безопасный вызов LLM с приоритетом qwen2.5-coder:7b -> llama3 -> fallback список."""
+        preferred_models = ["qwen2.5-coder:7b", "llama3"] + OLLAMA_MODELS
+        last_error = None
+        for model_name in preferred_models:
+            try:
+                params = {
+                    "model": model_name,
+                    "base_url": settings.OLLAMA_BASE_URL,
+                    "temperature": 0.1,
+                    "timeout": 300,
+                }
+                if format_json:
+                    params["format"] = "json"
+                llm = ChatOllama(**params)
+                resp = llm.invoke(prompt)
+                if resp and resp.content and len(resp.content) > 10:
+                    return resp.content
+                last_error = ValueError("Пустой ответ LLM")
+            except Exception as e:
+                last_error = e
+                logger.warning(f"LLM {model_name} ошибка: {e}")
+                continue
+        logger.error(f"Все модели недоступны: {last_error}")
+        raise HTTPException(status_code=503, detail="LLM недоступен для анализа")
+
+    def _extract_text(temp_path: str, filename: str) -> str:
+        """Умный парсинг с unstructured, затем fallback к PyMuPDF/Docx2txt."""
+        ext = (os.path.splitext(str(filename or ""))[1] or "").lower()
+        # 1) unstructured, если доступна
+        try:
+            from unstructured.partition.auto import partition
+
+            elements = partition(filename=temp_path)
+            joined = "\n".join([el.text for el in elements if getattr(el, "text", "")])
+            if joined.strip():
+                return joined
+        except Exception as e:
+            logger.info(f"unstructured не сработал: {e}")
+
+        # 2) fallback
+        try:
+            if ext == ".pdf":
+                docs = PyMuPDFLoader(temp_path).load()
+                return "\n".join([d.page_content for d in docs])
+            if ext in (".docx", ".doc"):
+                docs = Docx2txtLoader(temp_path).load()
+                return "\n".join([d.page_content for d in docs])
+            # текст по умолчанию
+            with open(temp_path, "r", encoding="utf-8", errors="ignore") as f:
+                return f.read()
+        except Exception as e:
+            logger.error(f"Ошибка чтения файла: {e}")
+            raise HTTPException(status_code=400, detail="Файл не читается")
+
+    # --- 1. Проверяем лимиты/режим ---
     is_demo = False
     demo_session = None
     user_id = None
@@ -1906,92 +2157,61 @@ async def analyze_endpoint(
     usage = None
 
     if current_user:
-        # Авторизованный пользователь
-        # Проверяем триал и автоматически переводим на Free если истек
         if current_user.plan_type == "trial" and not current_user.is_trial_active():
-            # Триал истек - переводим на Free тариф
             free_tariff = db.query(Tariff).filter(Tariff.name == "Free").first()
             if free_tariff:
                 current_user.plan_type = "free"
                 current_user.tariff_id = free_tariff.id
                 db.commit()
                 logger.info(f"Триал истек для {current_user.email}, переведен на Free тариф")
-        
-        # Проверяем доступность анализа
+
         can_analyze, error_msg = check_user_can_analyze(current_user, db)
         if not can_analyze:
             raise HTTPException(status_code=429, detail=error_msg)
-        
+
         user_id = current_user.id
-        current_month = datetime.now().month
-        current_year = datetime.now().year
-        
-        # Получаем или создаем запись использования
+        now = datetime.now()
         usage = db.query(Usage).filter(
-            Usage.user_id == current_user.id,
-            Usage.year == current_year,
-            Usage.month == current_month
+            Usage.user_id == current_user.id, Usage.year == now.year, Usage.month == now.month
         ).first()
-        
         if not usage:
-            usage = Usage(
-                user_id=current_user.id,
-                year=current_year,
-                month=current_month,
-                analyses_count=0
-            )
+            usage = Usage(user_id=current_user.id, year=now.year, month=now.month, analyses_count=0)
             db.add(usage)
             db.flush()
     else:
-        # Демо-пользователь
         is_demo = True
         if request:
             demo_session = get_or_create_demo_session(request, db)
             if demo_session:
                 can_analyze, reason = demo_session.can_analyze()
                 if not can_analyze:
-                    # КОНТЕКСТНЫЙ ТРИГГЕР: Демо лимит достигнут
                     raise HTTPException(
                         status_code=429,
                         detail=reason,
-                        headers={
-                            "X-Demo-Limit": "true",
-                            "X-Suggest-Registration": "true"
-                        }
+                        headers={"X-Demo-Limit": "true", "X-Suggest-Registration": "true"},
                     )
                 session_id = demo_session.id
                 demo_session.increment_analyses()
                 db.commit()
-            else:
-                raise HTTPException(status_code=500, detail="Не удалось создать демо-сессию")
         else:
-            # Если нет request, но и нет пользователя - разрешаем один раз
             logger.warning("Демо-режим без request объекта")
 
-    # --- После проверки лимитов переходим к работе с файлом ---
-    # Валидация файла
+    # --- 2. Сохраняем файл и проверяем кеш ---
     is_valid, error_msg = validate_file(file)
     if not is_valid:
         raise HTTPException(status_code=400, detail=error_msg)
 
-    # Используем tempfile для безопасного создания временного файла.
-    # ВАЖНО: используем только расширение оригинального файла, без полного имени,
-    # чтобы избежать проблем с не-ASCII путями (особенно на Windows).
     original_ext = os.path.splitext(file.filename or "")[1] or ""
     temp_fd, temp_path = tempfile.mkstemp(suffix=original_ext, prefix="tender_", dir=os.getcwd())
     file_content_bytes = b""
 
     try:
-        # Закрываем файловый дескриптор сразу после создания, мы будем работать с путем
         os.close(temp_fd)
-        
-        # Проверка размера при сохранении
         file_size = 0
-        MAX_SIZE = 50 * 1024 * 1024  # 50 МБ
-        
+        MAX_SIZE = 50 * 1024 * 1024
         with open(temp_path, "wb") as buffer:
             while True:
-                chunk = await file.read(8192)  # Читаем по 8 КБ
+                chunk = await file.read(8192)
                 if not chunk:
                     break
                 file_size += len(chunk)
@@ -1999,106 +2219,232 @@ async def analyze_endpoint(
                     os.remove(temp_path)
                     raise HTTPException(
                         status_code=413,
-                        detail=f"Файл слишком большой ({(file_size / 1024 / 1024):.2f} МБ). Максимальный размер: {MAX_SIZE / 1024 / 1024} МБ"
+                        detail=f"Файл слишком большой ({(file_size / 1024 / 1024):.2f} МБ). Максимальный размер: {MAX_SIZE / 1024 / 1024} МБ",
                     )
                 buffer.write(chunk)
-                file_content_bytes += chunk  # Сохраняем для кеширования
+                file_content_bytes += chunk
             buffer.flush()
             os.fsync(buffer.fileno())
-        
-        # Проверяем кеш перед анализом
+
         from cache_service import get_document_hash, get_cached_analysis, cache_analysis
+
         file_hash = get_document_hash(file_content_bytes, file.filename)
         cached_result = get_cached_analysis(file_hash, industry)
-        
         if cached_result:
             logger.info(f"✅ Использован закешированный результат для {file.filename}")
-            # Сохраняем в БД если пользователь авторизован
             if current_user:
                 try:
-                    analysis_record = Analysis(
-                        user_id=current_user.id,
-                        session_id=session_id,
-                        is_demo=is_demo,
-                        filename=file.filename,
-                        industry=industry,
-                        result_json=cached_result,
-                        score=cached_result.get("score", 50),
-                        verdict=cached_result.get("verdict", "CAUTION"),
-                        summary=cached_result.get("summary", "")
+                    db.add(
+                        Analysis(
+                            user_id=current_user.id,
+                            session_id=session_id,
+                            is_demo=is_demo,
+                            filename=file.filename,
+                            industry=industry,
+                            result_json=cached_result,
+                            score=cached_result.get("score", 50),
+                            verdict=cached_result.get("verdict", "CAUTION"),
+                            summary=cached_result.get("summary", ""),
+                        )
                     )
-                    db.add(analysis_record)
-                    if current_user and usage:
+                    if usage:
                         usage.analyses_count += 1
                         usage.updated_at = datetime.utcnow()
                     db.commit()
                 except Exception as db_err:
                     db.rollback()
                     logger.error(f"Ошибка сохранения кешированного анализа: {db_err}")
-            
             return cached_result
-        
-        # Файл уже сохранен в temp_path, seek не нужен
-        # await file.seek(0)  # Удалено - файл уже прочитан и сохранен
-        result = await analyze_single_file(temp_path, file.filename, industry)
-        logger.info(
-            f"ANALYZE_SINGLE_DONE file={file.filename} industry={industry} score={result.get('score')} verdict={result.get('verdict')}"
-        )
-        
-        # Сохраняем результат в кеш
+
+        # --- 3. Чтение текста ---
+        text = _extract_text(temp_path, file.filename)
+        if not text.strip():
+            raise HTTPException(status_code=400, detail="Файл пустой")
+
+        # --- 4. Stage 1: факты ---
+        stage1_prompt = f"""
+        Ты — быстрый факт-экстрактор для тендерного анализа. Верни JSON без комментариев:
+        {{
+          "nmck": "...",
+          "advance": "...",
+          "bid_security": "...",
+          "contract_security": "...",
+          "payment_terms": "сроки и условия оплаты",
+          "deadlines": "сроки подачи/исполнения",
+          "obligations_customer": "главные обязанности заказчика",
+          "obligations_supplier": "главные обязанности поставщика",
+          "missing_items": "чего явно не хватает",
+          "risks": "кратко потенциальные риски"
+        }}
+        Текст:
+        {text[:12000]}
+        """
+        facts_raw = _call_llm(stage1_prompt, format_json=True)
         try:
-            file_hash = get_document_hash(file_content_bytes, file.filename)
-            cache_analysis(file_hash, result, industry, ttl=86400)  # 24 часа
-            logger.info(f"✅ Результат анализа закеширован: {file.filename}")
+            facts_dict = json.loads(facts_raw) if isinstance(facts_raw, str) else facts_raw
+            facts = Stage1Facts(**facts_dict)
+        except Exception as e:
+            logger.warning(f"Stage1 парсинг не удался: {e}")
+            facts = Stage1Facts()
+
+        # --- 5. Stage 2: Злой аудитор ---
+        system_prompt = (
+            "Ты — опытный тендерный специалист с 30-летним стажем. "
+            "Говоришь живым, понятным языком, как коллега коллеге. "
+            "Не используй канцеляризмы, формальные обороты и бюрократический жаргон. "
+            "Объясняй простыми словами, как будто предупреждаешь друга-бизнесмена о подвохах. "
+            "Твоя задача — найти реальные проблемы и объяснить их так, чтобы было понятно любому предпринимателю. "
+            "Всегда ищи: (1) Асимметрию (жесткие требования к исполнителю vs слабые штрафы заказчика), "
+            "(2) Отсутствие ключевых требований (опыт, квалификация, SLA, контроль качества), "
+            "(3) Экономику: цена/единица, маржинальность, риск кассового разрыва при отсрочке платежей. "
+            "Начинай ответы с 'Привет!' или 'Слушай, тут проблема...' - говори естественно."
+        )
+        verdict_prompt = f"""
+        Инструкция:
+        Сформируй глубокий анализ и верни JSON по структуре Советника:
+        {{
+          "summary": "1 предложение с вердиктом",  // дублирует executive_summary в сжатом виде
+          "executive_summary": "Начни с 'Привет! Я изучил этот контракт.' Затем простыми словами объясни главную проблему в 3-5 строк. "
+                              "Говори как опытный коллега, который предупреждает о подвохах. "
+                              "Пример: 'Привет! Я изучил этот контракт. Честно говоря, он выглядит как ловушка для новичка. "
+                              "Заказчик хочет Мерседес по цене Жигулей - цена занижена на 25%. "
+                              "Более того, аванса нет, а оплата через 60 дней. Вы будете кредитовать заказчика своими деньгами.'",
+          "score": 0-100,  // 0=полный стоп, 100=чисто
+          "verdict": "STOP"|"CAUTION"|"PARTICIPATE",
+          "passport": {{
+              "nmck": "{facts.nmck or ''}",
+              "deadlineApp": "{facts.deadlines or ''}",
+              "guarantee": "{facts.contract_security or facts.bid_security or ''}",
+              "advance": "{facts.advance or '0%'}",
+              "payment_terms": "{facts.payment_terms or ''}"
+          }},
+          "financial_analysis": {{
+              "margin_risk": "High|Medium|Low",
+              "cash_gap_risk": "Yes|No",
+              "reasoning": "Объясни простыми словами, почему такой риск. Пример: 'Цена занижена на 25% от рыночной. "
+                          "При таких условиях даже при идеальном выполнении вы уйдете в минус. Плюс нет аванса - придется кредитовать заказчика.'"
+          }},
+          "deal_breakers": [
+              "Простыми словами опиши критический стоп-фактор. Пример: 'Аванс 0%, оплата через 60 дней - вы кредитуете заказчика'",
+              "Еще один критический фактор простыми словами"
+          ],
+          "smart_questions": [
+              "Вопрос для заказчика простыми словами. Пример: 'Прошу разъяснить экономическое обоснование цены 300 руб/час, учитывая среднерыночную ставку 800 руб/час?'",
+              "Еще один вопрос простыми словами",
+              "Еще один вопрос простыми словами"
+          ],
+          "issues": [  // заполни на основе deal_breakers/рисков, чтобы совместимость с UI не ломать
+              {{
+                  "title": "краткий риск",
+                  "severity": "high|medium|low",
+                  "description": "объясни простыми словами, почему это плохо для бизнеса. Пример: 'Заказчик требует реакции за 60 минут, но сам может проверять работу неделями. Штрафы только для вас.'",
+                  "quote": "цитата из документа",
+                  "recommendation": "что сделать простыми словами. Пример: 'Запросить зеркальные штрафы через Протокол разногласий'"
+              }}
+          ],
+          "specs": []
+        }}
+
+        Логика анализа (используй факты Stage1 + текст):
+        - Асимметрия: жесткие обязанности исполнителя vs слабые штрафы заказчика.
+        - Отсутствие: нет опыта/квалификации/SLA/контроля качества/ограничения объема — это риск демпинга.
+        - Экономика: цена за единицу vs рынок; маржа; риск кассового разрыва, если отсрочка > 15 дней или аванс < 10%.
+        - Если обеспечение > 15% -> укажи заморозку оборотных средств.
+        - Если объем "без ограничений" при фиксированной цене -> это deal_breaker или high risk.
+        - Вердикт: STOP (криминал/невыполнимо/нет экономики), CAUTION (нужны деньги/юристы/переговоры), PARTICIPATE (чисто).
+        - Smart questions: 3-5 острых вопросов, раскрывающих подвох (объем, платежи, штрафы, опыт).
+
+        Stage1 факты:
+        {facts.model_dump()}
+
+        Текст (обрежен):
+        {text[:16000]}
+        """
+        final_prompt = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": verdict_prompt},
+        ]
+
+        final_raw = None
+        try:
+            # ChatOllama принимает messages, но _call_llm ожидает prompt. Объединяем.
+            prompt_str = "\n".join([f"{m['role']}: {m['content']}" for m in final_prompt])
+            final_raw = _call_llm(prompt_str, format_json=True)
+            final_dict = json.loads(final_raw) if isinstance(final_raw, str) else final_raw
+            result_model = AnalysisResult(**final_dict)
+            result = result_model.model_dump()
+        except Exception as e:
+            logger.error(f"Stage2 парсинг не удался: {e}")
+            # fallback минимальный
+            result = {
+                "summary": "⚠️ Упрощенный анализ: не удалось получить полный ответ LLM",
+                "score": 45,
+                "verdict": "CAUTION",
+                "passport": {
+                    "nmck": facts.nmck or "Не найдено",
+                    "deadlineApp": facts.deadlines or "Не найдено",
+                    "guarantee": facts.contract_security or facts.bid_security or "Не найдено",
+                    "advance": facts.advance or "0%",
+                },
+                "executive_summary": "Не удалось получить полный ответ LLM. Требуется ручная проверка.",
+                "financial_analysis": {
+                    "margin_risk": "High",
+                    "cash_gap_risk": "Yes",
+                    "reasoning": "Резервный ответ: модель недоступна, экономический анализ не выполнен."
+                },
+                "deal_breakers": ["Модель не ответила, требуется повторный анализ"],
+                "smart_questions": [
+                    "Подтвердите ключевые риски вручную",
+                    "Перезапустите анализ после восстановления LLM"
+                ],
+                "issues": [
+                    {
+                        "title": "Нет данных LLM",
+                        "severity": "medium",
+                        "description": "Модель не ответила, требуется ручная проверка.",
+                        "quote": "",
+                        "recommendation": "Перезапустить анализ после восстановления LLM",
+                    }
+                ],
+                "specs": [],
+            }
+
+        # --- 6. Кеш/БД/ответ ---
+        try:
+            cache_analysis(file_hash, result, industry, ttl=86400)
         except Exception as cache_err:
             logger.warning(f"Не удалось закешировать результат: {cache_err}")
 
-        # Сохраняем в БД
         try:
-            analysis_record = Analysis(
-                user_id=user_id,
-                session_id=session_id,
-                is_demo=is_demo,
-                filename=file.filename,
-                industry=industry,
-                result_json=result,
-                score=result.get("score", 50),
-                verdict=result.get("verdict", "CAUTION"),
-                summary=result.get("summary", "")
+            db.add(
+                Analysis(
+                    user_id=user_id,
+                    session_id=session_id,
+                    is_demo=is_demo,
+                    filename=file.filename,
+                    industry=industry,
+                    result_json=result,
+                    score=result.get("score", 50),
+                    verdict=result.get("verdict", "CAUTION"),
+                    summary=result.get("summary", ""),
+                )
             )
-            db.add(analysis_record)
-            
-            # Обновляем счетчик использования (для авторизованных)
             if current_user and usage:
                 usage.analyses_count += 1
                 usage.updated_at = datetime.utcnow()
-            
             db.commit()
-            
-            if current_user:
-                logger.info(f"✅ Анализ сохранен в БД для пользователя {current_user.email}")
-            else:
-                logger.info(f"✅ Анализ сохранен в БД для демо-сессии {session_id}")
-            
-            # КОНТЕКСТНЫЙ ТРИГГЕР #1: После первого анализа в демо-режиме
             if is_demo and demo_session and demo_session.analyses_count == 1:
-                result['ui_suggestion'] = {
-                    'type': 'register_after_analysis',
-                    'title': '🎉 Анализ готов!',
-                    'message': 'Сохраните результаты в личный кабинет',
-                    'benefits': [
-                        'Хранить все анализы',
-                        'Экспортировать в PDF',
-                        'Делиться с коллегами'
-                    ]
+                result["ui_suggestion"] = {
+                    "type": "register_after_analysis",
+                    "title": "🎉 Анализ готов!",
+                    "message": "Сохраните результаты в личный кабинет",
+                    "benefits": ["Хранить все анализы", "Экспортировать в PDF", "Делиться с коллегами"],
                 }
         except Exception as db_err:
             db.rollback()
             logger.error(f"Ошибка сохранения в БД: {db_err}")
-        
-        # Старая история (для обратной совместимости)
+
         if not current_user:
-            # Для неавторизованных пользователей сохраняем в старую историю (обратная совместимость)
             try:
                 item = HistoryItem(
                     id=str(uuid.uuid4()),
@@ -2115,34 +2461,18 @@ async def analyze_endpoint(
             except Exception as hist_err:
                 logger.error(f"History append error (single): {hist_err}")
 
-        # Сохраняем результат в кеш (если file_content_bytes доступен)
-        try:
-            from cache_service import get_document_hash, cache_analysis
-            # Читаем файл для кеширования
-            with open(temp_path, "rb") as f:
-                file_content_bytes = f.read()
-            file_hash = get_document_hash(file_content_bytes, file.filename)
-            cache_analysis(file_hash, result, industry, ttl=86400)  # 24 часа
-            logger.info(f"✅ Результат анализа закеширован: {file.filename}")
-        except Exception as cache_err:
-            logger.warning(f"Не удалось закешировать результат: {cache_err}")
-
         return result
 
     except HTTPException:
-        # Пробрасываем HTTP исключения как есть
         raise
     except Exception as e:
         import traceback
+
         error_trace = traceback.format_exc()
         logger.error(f"❌ Server Error в analyze_endpoint: {e}")
         logger.error(f"Детали ошибки:\n{error_trace}")
-        raise HTTPException(
-            status_code=500, 
-            detail=f"Ошибка при анализе документа: {str(e)[:200]}"
-        )
+        raise HTTPException(status_code=500, detail=f"Ошибка при анализе документа: {str(e)[:200]}")
     finally:
-        # Безопасное удаление файла с повторными попытками
         safe_remove_file(temp_path)
 
 @app.post("/api/analyze-package")

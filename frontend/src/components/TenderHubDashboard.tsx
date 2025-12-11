@@ -1,11 +1,15 @@
 import React from 'react';
-import type { AnalysisResult, TenderHubSummary } from '../types';
+import type { AnalysisResult, TenderHubSummary, CalculatorPreset } from '../types';
 import { AlertTriangle, CheckCircle, Info, ShieldAlert, FileText, Clock, Banknote, Scale, ClipboardList } from 'lucide-react';
 import { logEvent } from '../utils/logger';
+import { verdictLabel } from '../utils/hubUiHelpers';
 
 interface TenderHubDashboardProps {
   result: AnalysisResult;
   hub: TenderHubSummary;
+  onSelectForCalculator?: (preset: CalculatorPreset) => void;
+  onOpenCalculator?: () => void;
+  onOpenGenerator?: () => void;
 }
 
 const severityColor = (severity: string): string => {
@@ -15,8 +19,65 @@ const severityColor = (severity: string): string => {
   return 'text-emerald-300 bg-emerald-500/10 border-emerald-500/40';
 };
 
-export const TenderHubDashboard: React.FC<TenderHubDashboardProps> = ({ result, hub }) => {
+export const TenderHubDashboard: React.FC<TenderHubDashboardProps> = ({
+  result,
+  hub,
+  onSelectForCalculator,
+  onOpenCalculator,
+  onOpenGenerator,
+}) => {
   const { redFlagsTop, baseInfo, specsSummary, timeline, payments, guarantees, financial, recommendation } = hub;
+
+  const handleParticipateClick = () => {
+    logEvent(
+      'TenderHubDashboard',
+      `Принято решение: УЧАСТВОВАТЬ. Вердикт: ${recommendation.verdict}, Индекс безопасности: ${result.score}`,
+      'info',
+      {
+        verdict: recommendation.verdict,
+        score: result.score,
+        nmck: result.passport.nmck,
+      },
+    );
+
+    if (onSelectForCalculator) {
+      const preset: CalculatorPreset = {
+        source: 'single',
+        nmck: result.passport?.nmck,
+        score: result.score,
+      };
+      onSelectForCalculator(preset);
+    }
+
+    if (onOpenCalculator) {
+      onOpenCalculator();
+    }
+  };
+
+  const handleAskClarificationClick = () => {
+    logEvent('TenderHubDashboard', 'Нажата кнопка: Запрос разъяснений', 'info', {
+      nmck: result.passport.nmck,
+    });
+    if (onOpenGenerator) {
+      onOpenGenerator();
+    }
+  };
+
+  const handleDoNotParticipateClick = () => {
+    logEvent(
+      'TenderHubDashboard',
+      `Принято решение: НЕ УЧАСТВОВАТЬ. Причина: ${recommendation.summaryShort.substring(0, 50)}...`,
+      'info',
+      {
+        verdict: recommendation.verdict,
+        score: result.score,
+        reason: recommendation.summaryShort,
+      },
+    );
+    if (onOpenGenerator) {
+      onOpenGenerator();
+    }
+  };
 
   return (
     <div className="space-y-4 mb-6">
@@ -59,7 +120,8 @@ export const TenderHubDashboard: React.FC<TenderHubDashboardProps> = ({ result, 
             <div className="text-xs text-slate-400 mb-1">Индекс безопасности</div>
             <div className="text-3xl font-bold text-white mb-1">{result.score}</div>
             <div className="text-[11px] text-slate-400">
-              Вердикт системы: <span className="font-semibold text-slate-100">{result.verdict}</span>
+              Вердикт системы:{' '}
+              <span className="font-semibold text-slate-100">{verdictLabel(result.verdict)}</span>
             </div>
           </div>
           <p className="mt-3 text-[10px] text-slate-500 flex items-start gap-1">
@@ -191,40 +253,21 @@ export const TenderHubDashboard: React.FC<TenderHubDashboardProps> = ({ result, 
           <div className="flex gap-2 mt-2">
             <button
               type="button"
-              onClick={() => {
-                logEvent('TenderHubDashboard', `Принято решение: УЧАСТВОВАТЬ. Вердикт: ${recommendation.verdict}, Индекс безопасности: ${result.score}`, 'info', {
-                  verdict: recommendation.verdict,
-                  score: result.score,
-                  nmck: result.passport.nmck,
-                });
-                // В будущем здесь будет навигация к сбору документов или экспорт решения
-              }}
+              onClick={handleParticipateClick}
               className="flex-1 py-1.5 rounded-lg bg-emerald-500 text-[#020617] text-xs font-semibold hover:bg-emerald-400 transition-colors"
             >
               Участвовать
             </button>
             <button
               type="button"
-              onClick={() => {
-                logEvent('TenderHubDashboard', 'Нажата кнопка: Запрос разъяснений', 'info', {
-                  nmck: result.passport.nmck,
-                });
-                // В будущем здесь будет открытие формы запроса разъяснений
-              }}
+              onClick={handleAskClarificationClick}
               className="flex-1 py-1.5 rounded-lg bg-slate-800 text-slate-100 text-xs font-semibold hover:bg-slate-700 transition-colors"
             >
               Запрос разъяснений
             </button>
             <button
               type="button"
-              onClick={() => {
-                logEvent('TenderHubDashboard', `Принято решение: НЕ УЧАСТВОВАТЬ. Причина: ${recommendation.summaryShort.substring(0, 50)}...`, 'info', {
-                  verdict: recommendation.verdict,
-                  score: result.score,
-                  reason: recommendation.summaryShort,
-                });
-                // В будущем здесь будет возможность подачи жалобы в ФАС или экспорт решения
-              }}
+              onClick={handleDoNotParticipateClick}
               className="flex-1 py-1.5 rounded-lg bg-red-500/90 text-[#020617] text-xs font-semibold hover:bg-red-400 transition-colors"
             >
               Не участвовать

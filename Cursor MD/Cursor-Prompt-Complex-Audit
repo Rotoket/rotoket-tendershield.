@@ -1,0 +1,1097 @@
+# ПРОМПТ ДЛЯ CURSOR: КОМПЛЕКСНЫЙ АУДИТ ТЕНДЕРОВ
+## Tender Shield Pro: Advanced Analysis & Audit System
+
+---
+
+## 🎯 КОНТЕКСТ ПРОЕКТА
+
+**Проект:** Tender Shield Pro (Тендер.Щит.AI)  
+**Задача:** Улучшить анализ и комплексный аудит при загрузке нескольких документов  
+**Текущая проблема:** Ollama выводит сырой, неинформативный анализ  
+**Цель:** Создать мощный, структурированный, информативный отчет  
+
+---
+
+## ⚡ ЧАСТЬ 1: СИСТЕМНЫЙ ПРОМПТ ДЛЯ OLLAMA
+
+### Используй этот промпт в `backend/services/llm_service.py`:
+
+```python
+# backend/services/llm_service.py
+
+TENDER_ANALYSIS_SYSTEM_PROMPT = """
+Ты - ЭКСПЕРТ ПО ТЕНДЕРАМ и комплексному анализу закупок.
+Твоя задача - анализировать документы тендеров (ТЗ, Контракты, Сметы, ПКП) и выдавать 
+детальный, структурированный, профессиональный отчет на русском языке.
+
+ПРАВИЛА АНАЛИЗА:
+1. ВСЕ ответы ТОЛЬКО на русском языке
+2. Структурируй ответ по четким СЕКЦИЯМ
+3. Используй форматирование: **жирный текст**, • пункты, --- разделители
+4. Будь конкретен: цифры, факты, дата, сроки, условия
+5. Выявляй КРАСНЫЕ ФЛАГИ и риски автоматически
+6. Сравнивай документы, если их несколько
+7. Выводи ФИНАЛЬНЫЙ ВЕРДИКТ с оценкой по 100-балльной шкале
+
+СТРУКТУРА ОБЯЗАТЕЛЬНОГО ОТВЕТА:
+
+## 📋 ПАСПОРТ ТЕНДЕРА
+- Номер закупки / Код закупки
+- Заказчик (название, ИНН, регион)
+- Тип закупки (44-ФЗ / 223-ФЗ / прямая)
+- Сумма контракта (начальная, обоснованная, минимальная)
+- Сроки (подачи заявок, открытия, исполнения)
+- Объект закупки (краткое описание)
+- Статус (открыта, закрыта, отменена)
+
+## 📊 АНАЛИЗ ДОКУМЕНТОВ
+Для каждого документа:
+- Название и тип документа
+- Основные параметры и показатели
+- Соответствие нормам (если требуется)
+- Ключевые условия и ограничения
+
+## ⚠️ ВЫЯВЛЕННЫЕ РИСКИ (если есть)
+- КРАСНЫЙ (критический риск) - что это значит, почему опасно
+- ОРАНЖЕВЫЙ (средний риск) - описание и рекомендация
+- ЖЕЛТЫЙ (низкий риск) - уведомление
+
+## 💰 ФИНАНСОВЫЙ АНАЛИЗ
+- Расчет обоснованности НМЦК
+- Анализ смет и цен
+- Сравнение предложений (если несколько)
+- Рекомендации по ценовым условиям
+
+## 📖 ПРАВОВОЙ АНАЛИЗ
+- Соответствие 44-ФЗ / 223-ФЗ / другим законам
+- Анализ условий контракта
+- Выявленные нарушения или противоречия
+- Рекомендации по улучшению
+
+## 🎯 СТРАТЕГИЧЕСКИЕ ВЫВОДЫ
+- Привлекательность для поставщиков
+- Конкурентоспособность
+- Рекомендуемые действия
+
+## 📈 ИТОГОВАЯ ОЦЕНКА
+- Общая оценка по 100-балльной шкале
+- Вердикт (ОТЛИЧНЫЙ / ХОРОШИЙ / СРЕДНИЙ / ПЛОХОЙ / КРИТИЧНЫЙ)
+- TOP-3 преимущества
+- TOP-3 риска / недостатка
+
+ТРЕБОВАНИЯ К КАЧЕСТВУ:
+✓ Минимум 800 слов для базового анализа
+✓ Минимум 1500+ слов для комплексного аудита (3+ документов)
+✓ Конкретные цифры и факты из документов
+✓ Профессиональный тон, деловой русский язык
+✓ Ссылки на конкретные статьи законов где применимо
+✓ Четкие рекомендации и действия
+✓ Таблицы для сравнения параметров
+
+ЕСЛИ ДОКУМЕНТОВ НЕСКОЛЬКО:
+1. Проанализируй каждый отдельно (краткий анализ)
+2. Проведи СРАВНИТЕЛЬНЫЙ АНАЛИЗ (что совпадает, что не совпадает)
+3. Выяви противоречия между документами
+4. Дай КОМПЛЕКСНЫЙ ВЕРДИКТ на все вместе
+5. Рекомендуй как согласовать / улучшить
+
+КРАСНЫЕ ФЛАГИ (выявляй автоматически):
+- НМЦК ниже рыночной стоимости
+- Сроки подачи менее 3 дней
+- Требования, исключающие конкурентность
+- Закупка 223-ФЗ без необходимости (должна быть 44-ФЗ)
+- Условия, благоприятствующие определенному поставщику
+- Завышенные требования к опыту / квалификации
+- Отсутствие гарантий и условий ответственности
+- Налоговые или реестровые несоответствия
+
+ВЫВОДИ ТАБЛИЦЫ:
+Используй markdown таблицы для:
+| Параметр | Значение | Статус |
+|----------|----------|--------|
+| ... | ... | ✅/⚠️/❌ |
+
+Будь критичен, но справедлив. Помогай улучшить закупки, а не критикуй просто так.
+"""
+
+COMPLEX_AUDIT_SYSTEM_PROMPT = """
+Ты - ГЛАВНЫЙ АНАЛИТИК КОМПЛЕКСНОГО АУДИТА тендеров с опытом 15+ лет.
+Твоя задача - провести ПОЛНЫЙ аудит закупки, включая анализ нескольких документов:
+ТЗ, Контракт, Смету, ПКП (План контрактации), Приложения.
+
+КОМПЛЕКСНЫЙ АУДИТ ВКЛЮЧАЕТ:
+1. ДОКУМЕНТООБОРОТ - все ли документы присутствуют, правильный ли порядок
+2. ЛОГИЧЕСКАЯ СОГЛАСОВАННОСТЬ - всё ли совпадает между документами
+3. ПОЛНОТА ИНФОРМАЦИИ - ничего ли не упущено
+4. ФИНАНСОВАЯ КОРРЕКТНОСТЬ - цены, сметы, НДС рассчитаны верно
+5. ПРАВОВАЯ КОРРЕКТНОСТЬ - соответствие всем нормативам
+6. ПРАКТИЧЕСКАЯ ОСУЩЕСТВИМОСТЬ - реалистичны ли требования
+
+РАСШИРЕННАЯ СТРУКТУРА ОТЧЕТА:
+
+## 📋 КАРТИНА ЗАКУПКИ (Overview)
+Краткое резюме что покупается, за сколько, зачем, на каких условиях
+
+## 📚 АНАЛИЗ ДОКУМЕНТООБОРОТА
+- Количество приложенных документов
+- Типы документов (ТЗ, Контракт, Смета, ПКП, Приложения)
+- Логическая последовательность
+- Полнота набора документов
+
+## ✅ ДОКУМЕНТ-ПО-ДОКУМЕНТУ АНАЛИЗ
+Для каждого документа подробный анализ:
+### [Документ N: Название]
+- Структура и полнота
+- Ключевые параметры
+- Соответствие стандартам
+- Выявленные проблемы
+
+## 🔗 КРОСС-АНАЛИЗ (Логическая согласованность между документами)
+Таблица соответствия ключевых параметров:
+| Параметр | ТЗ | Контракт | Смета | Статус |
+|----------|----|---------|----|--------|
+
+- Согласованность описания предмета закупки
+- Согласованность объемов и количеств
+- Согласованность сроков и сумм
+- Согласованность требований и условий
+
+Выяви ПРОТИВОРЕЧИЯ между документами
+
+## 💰 ФИНАНСОВЫЙ АУДИТ
+- НМЦК: обоснованность, расчет, сравнение со сметой
+- Смета: правильность расчетов, наценки, НДС
+- Цены за единицу: адекватность рынку
+- Условия оплаты: соответствие нормам
+- Расходы на проведение закупки
+- Финансовые риски
+
+Таблица финансовых показателей:
+| Показатель | План | Факт | Отклонение | Статус |
+
+## 📖 ПРАВОВОЙ АУДИТ
+- Тип закупки (44-ФЗ / 223-ФЗ / другое): правильный ли выбран
+- Соответствие требованиям закона
+- Анализ условий контракта на соответствие нормативам
+- Условия ответственности: достаточны ли
+- Гарантии: соответствуют ли стандартам
+- Санкции и штрафы: законны ли условия
+- Конфликты интересов: выяви
+- Нарушения антимонопольного законодательства
+
+Список критичных нарушений (если есть)
+
+## ⚠️ МАТРИЦА РИСКОВ
+
+| Риск | Вероятность | Влияние | Статус | Действие |
+|------|-------------|---------|--------|----------|
+| ... | В/С/Н | В/С/Н | 🔴/🟠/🟡 | Рекомендация |
+
+## 🔍 ВЫЯВЛЕННЫЕ ПРОБЛЕМЫ
+Ранжированы по критичности:
+🔴 КРИТИЧНОЕ (нарушение закона, срочно исправить)
+🟠 СЕРЬЕЗНОЕ (риск отмены, необходимо устранить)
+🟡 СРЕДНЕЕ (недоработка, нужно улучшить)
+🟢 НЕЗНАЧИТЕЛЬНОЕ (уточнить, если есть время)
+
+Для каждой проблемы:
+- Описание проблемы
+- Почему это проблема
+- Последствия если не исправить
+- Как исправить (конкретные действия)
+
+## ✨ РЕКОМЕНДАЦИИ ПО УЛУЧШЕНИЮ
+- TOP-5 критичных улучшений
+- TOP-5 желаемых улучшений
+- План действий и сроки
+- Кто должен взяться за что
+
+## 📊 СРАВНИТЕЛЬНЫЙ АНАЛИЗ (если несколько поставщиков/вариантов)
+Таблица сравнения параметров
+
+## 🎯 ИТОГОВЫЙ ВЕРДИКТ
+- Готовность закупки: процент
+- Рекомендуемые действия: ДА / НЕТ / С УСЛОВИЯМИ
+- Риск уровень: НИЗКИЙ / СРЕДНИЙ / ВЫСОКИЙ / КРИТИЧНЫЙ
+- Общая оценка: 0-100 баллов
+- Статус: ✅ ОДОБРЕНО / ⚠️ ТРЕБУЕТ ПРАВОК / ❌ ПЕРЕДЕЛАТЬ
+
+## 📝 ПЛАН ДЕЙСТВИЙ
+1. СРОЧНО (делать немедленно)
+2. В ТЕЧЕНИЕ 3 ДНЕЙ
+3. ПЕРЕД ПУБЛИКАЦИЕЙ
+4. ПЕРЕД ОТКРЫТИЕМ ЗАЯВОК
+5. ПЕРЕД ПОДПИСАНИЕМ КОНТРАКТА
+
+ТРЕБОВАНИЯ К КОМПЛЕКСНОМУ АУДИТУ:
+✓ Минимум 2000+ слов (реальный аудит)
+✓ Минимум 3-4 таблицы для сравнения
+✓ Конкретные ссылки на законы и статьи
+✓ Конкретные цифры и расчеты
+✓ Четкие рекомендации с действиями
+✓ Профессиональный тон без критики
+✓ Помощь в улучшении, а не обвинения
+
+Если документов недостаточно или они отсутствуют:
+- Укажи какие документы необходимы для полного анализа
+- Проанализируй имеющиеся документы максимально детально
+- Дай рекомендации что нужно добавить
+
+Будь авторитетным, добросовестным, помогающим аналитиком.
+Твоя цель - помочь улучшить качество закупок и защитить интересы.
+"""
+
+# Использование в коде:
+def analyze_tender_document(documents: list[str], use_complex_audit: bool = False) -> str:
+    """
+    Анализ тендера с использованием Ollama
+    
+    Args:
+        documents: список текстов документов
+        use_complex_audit: True для комплексного аудита, False для базового анализа
+    """
+    
+    system_prompt = COMPLEX_AUDIT_SYSTEM_PROMPT if use_complex_audit else TENDER_ANALYSIS_SYSTEM_PROMPT
+    
+    # Объедини все документы с разделителями
+    combined_text = "\n\n--- ДОКУМЕНТ РАЗДЕЛИТЕЛЬ ---\n\n".join(documents)
+    
+    # Формируй пользовательский промпт
+    if use_complex_audit:
+        user_prompt = f"""
+        Проведи КОМПЛЕКСНЫЙ АУДИТ следующих документов тендера.
+        Всего документов загружено: {len(documents)}
+        
+        Документы:
+        {combined_text}
+        
+        Выдай детальный, структурированный отчет в соответствии с требованиями комплексного аудита.
+        """
+    else:
+        user_prompt = f"""
+        Проведи анализ следующих тендерных документов.
+        Всего документов загружено: {len(documents)}
+        
+        Документы:
+        {combined_text}
+        
+        Выдай структурированный отчет в соответствии с требованиями анализа.
+        """
+    
+    # Вызов Ollama
+    response = call_ollama(
+        model="qwen2.5:0.5b",  # или твоя модель
+        system=system_prompt,
+        user_prompt=user_prompt,
+        temperature=0.3,  # Низкая температура для точности
+        top_p=0.9,
+        top_k=40
+    )
+    
+    return response
+```
+
+---
+
+## ⚡ ЧАСТЬ 2: УЛУЧШЕННЫЙ BACKEND ENDPOINT
+
+```python
+# backend/api/analysis.py
+
+from fastapi import APIRouter, UploadFile, File, HTTPException
+from typing import Optional
+import asyncio
+
+router = APIRouter(prefix="/api/analysis", tags=["analysis"])
+
+@router.post("/complex-audit")
+async def complex_audit(
+    files: list[UploadFile] = File(...),
+    department: Optional[str] = None
+):
+    """
+    Комплексный аудит нескольких тендерных документов
+    """
+    
+    if not files or len(files) == 0:
+        raise HTTPException(status_code=400, detail="Загрузите минимум 1 документ")
+    
+    if len(files) > 5:
+        raise HTTPException(status_code=400, detail="Максимум 5 документов за раз")
+    
+    try:
+        # Читай все документы
+        documents = []
+        for file in files:
+            content = await file.read()
+            text = extract_text_from_file(content, file.filename)  # PDF/DOCX/TXT парсер
+            documents.append({
+                "name": file.filename,
+                "content": text,
+                "size": len(content)
+            })
+        
+        # Логирование
+        logger.info(f"Аудит {len(documents)} документов от {department or 'Unknown'}")
+        
+        # Анализ с Ollama (комплексный)
+        analysis_text = await analyze_tender_complex(
+            documents=[d["content"] for d in documents],
+            use_complex_audit=True
+        )
+        
+        # Парсирование результата
+        parsed_result = parse_audit_report(analysis_text)
+        
+        # Сохранение в БД
+        audit_record = AuditRecord(
+            user_id=current_user.id,
+            documents=documents,
+            analysis=analysis_text,
+            parsed_result=parsed_result,
+            department=department,
+            risk_level=parsed_result.get("risk_level"),
+            verdict=parsed_result.get("verdict")
+        )
+        db.add(audit_record)
+        db.commit()
+        
+        return {
+            "status": "success",
+            "audit_id": audit_record.id,
+            "documents_analyzed": len(documents),
+            "analysis": parsed_result,
+            "raw_text": analysis_text
+        }
+        
+    except Exception as e:
+        logger.error(f"Ошибка при аудите: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Ошибка анализа: {str(e)}")
+
+
+async def analyze_tender_complex(documents: list[str], use_complex_audit: bool = True) -> str:
+    """
+    Асинхронный вызов Ollama для комплексного анализа
+    """
+    from services.llm_service import analyze_tender_document
+    
+    # Запусти в thread pool чтобы не блокировать
+    loop = asyncio.get_event_loop()
+    result = await loop.run_in_executor(
+        None,
+        analyze_tender_document,
+        documents,
+        use_complex_audit
+    )
+    
+    return result
+
+
+def parse_audit_report(report_text: str) -> dict:
+    """
+    Парсирование отчета для структурированного вывода
+    """
+    # Простой парсинг секций (можно улучшить)
+    parsed = {
+        "full_text": report_text,
+        "risk_level": extract_risk_level(report_text),
+        "verdict": extract_verdict(report_text),
+        "score": extract_score(report_text),
+        "problems": extract_problems(report_text),
+        "recommendations": extract_recommendations(report_text),
+    }
+    
+    return parsed
+```
+
+---
+
+## 🎨 ЧАСТЬ 3: CYBERPUNK CORPORATE FRONTEND
+
+Создай компонент: `frontend/components/AuditReport.tsx`
+
+```typescript
+// frontend/components/AuditReport.tsx
+
+import React, { useState } from 'react';
+import './AuditReport.styles.css';
+
+interface AuditReportProps {
+  auditData: {
+    audit_id: string;
+    documents_analyzed: number;
+    analysis: {
+      full_text: string;
+      risk_level: 'НИЗКИЙ' | 'СРЕДНИЙ' | 'ВЫСОКИЙ' | 'КРИТИЧНЫЙ';
+      verdict: string;
+      score: number;
+      problems: Array<{ severity: string; title: string; description: string }>;
+      recommendations: string[];
+    };
+  };
+  onClose: () => void;
+}
+
+export const AuditReport: React.FC<AuditReportProps> = ({ auditData, onClose }) => {
+  const [expandedSection, setExpandedSection] = useState<string>('overview');
+  
+  const getRiskColor = (level: string) => {
+    switch(level) {
+      case 'КРИТИЧНЫЙ': return '#ff3333';
+      case 'ВЫСОКИЙ': return '#ff6600';
+      case 'СРЕДНИЙ': return '#ffaa00';
+      case 'НИЗКИЙ': return '#00ff00';
+      default: return '#00ccff';
+    }
+  };
+  
+  return (
+    <div className="audit-report-container">
+      {/* HEADER */}
+      <div className="report-header">
+        <div className="header-left">
+          <h1 className="report-title">
+            <span className="glow-text">⚡ КОМПЛЕКСНЫЙ АУДИТ</span>
+          </h1>
+          <p className="report-subtitle">
+            Анализ {auditData.documents_analyzed} документов | ID: {auditData.audit_id}
+          </p>
+        </div>
+        
+        <div className="header-right">
+          <div className="score-display">
+            <div className="score-number" style={{ color: getRiskColor(auditData.analysis.risk_level) }}>
+              {auditData.analysis.score}
+            </div>
+            <div className="score-label">баллов</div>
+          </div>
+          
+          <button className="close-btn" onClick={onClose}>✕</button>
+        </div>
+      </div>
+
+      {/* RISK LEVEL BANNER */}
+      <div 
+        className="risk-banner"
+        style={{ borderColor: getRiskColor(auditData.analysis.risk_level) }}
+      >
+        <div className="risk-indicator" style={{ backgroundColor: getRiskColor(auditData.analysis.risk_level) }}>
+          {auditData.analysis.risk_level}
+        </div>
+        <div className="risk-text">
+          Уровень риска: <strong>{auditData.analysis.risk_level}</strong>
+        </div>
+        <div className="risk-verdict">
+          {auditData.analysis.verdict}
+        </div>
+      </div>
+
+      {/* MAIN CONTENT GRID */}
+      <div className="report-grid">
+        
+        {/* ЛЕВАЯ КОЛОНКА: ПРОБЛЕМЫ И РИСКИ */}
+        <div className="column column-problems">
+          <div 
+            className="section-card expandable"
+            onClick={() => setExpandedSection(expandedSection === 'problems' ? '' : 'problems')}
+          >
+            <div className="section-header">
+              <h2>⚠️ ВЫЯВЛЕННЫЕ ПРОБЛЕМЫ</h2>
+              <span className={`expand-icon ${expandedSection === 'problems' ? 'open' : ''}`}>▼</span>
+            </div>
+            
+            {(expandedSection === 'problems' || expandedSection === '') && (
+              <div className="section-content">
+                {auditData.analysis.problems.length > 0 ? (
+                  <div className="problems-list">
+                    {auditData.analysis.problems.map((problem, idx) => (
+                      <div 
+                        key={idx} 
+                        className={`problem-item severity-${problem.severity.toLowerCase()}`}
+                      >
+                        <div className="problem-severity">{problem.severity}</div>
+                        <div className="problem-title">{problem.title}</div>
+                        <div className="problem-description">{problem.description}</div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="empty-state">✓ Критичных проблем не выявлено</div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* РЕКОМЕНДАЦИИ */}
+          <div 
+            className="section-card expandable"
+            onClick={() => setExpandedSection(expandedSection === 'recommendations' ? '' : 'recommendations')}
+          >
+            <div className="section-header">
+              <h2>💡 РЕКОМЕНДАЦИИ</h2>
+              <span className={`expand-icon ${expandedSection === 'recommendations' ? 'open' : ''}`}>▼</span>
+            </div>
+            
+            {(expandedSection === 'recommendations' || expandedSection === '') && (
+              <div className="section-content">
+                <ol className="recommendations-list">
+                  {auditData.analysis.recommendations.map((rec, idx) => (
+                    <li key={idx} className="recommendation-item">
+                      <span className="rec-number">{idx + 1}</span>
+                      <span className="rec-text">{rec}</span>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ПРАВАЯ КОЛОННА: ПОЛНЫЙ ОТЧЕТ */}
+        <div className="column column-report">
+          <div className="section-card full-report">
+            <div className="section-header">
+              <h2>📋 ПОЛНЫЙ ОТЧЕТ</h2>
+            </div>
+            
+            <div className="section-content report-text">
+              {/* Парсирование и красивый вывод markdown-подобного текста */}
+              {parseReportText(auditData.analysis.full_text)}
+            </div>
+            
+            <div className="report-footer">
+              <button className="btn-primary">📥 Скачать PDF</button>
+              <button className="btn-secondary">📧 Отправить</button>
+              <button className="btn-secondary">🔄 Обновить анализ</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* FOOTER */}
+      <div className="report-footer-info">
+        <p>© Tender Shield Pro | Аудит выполнен: {new Date().toLocaleString('ru-RU')}</p>
+      </div>
+    </div>
+  );
+};
+
+// Хелпер функция для парсирования текста
+function parseReportText(text: string): JSX.Element {
+  const lines = text.split('\n');
+  const elements: JSX.Element[] = [];
+  
+  lines.forEach((line, idx) => {
+    if (line.startsWith('## ')) {
+      elements.push(<h3 key={idx} className="report-h3">{line.replace('## ', '')}</h3>);
+    } else if (line.startsWith('### ')) {
+      elements.push(<h4 key={idx} className="report-h4">{line.replace('### ', '')}</h4>);
+    } else if (line.startsWith('- ')) {
+      elements.push(<li key={idx} className="report-li">{line.replace('- ', '')}</li>);
+    } else if (line.startsWith('**') && line.endsWith('**')) {
+      elements.push(<strong key={idx} className="report-strong">{line.replace(/\*\*/g, '')}</strong>);
+    } else if (line.trim() !== '') {
+      elements.push(<p key={idx} className="report-p">{line}</p>);
+    }
+  });
+  
+  return <>{elements}</>;
+}
+```
+
+---
+
+## 🎨 ЧАСТЬ 4: CYBERPUNK CSS СТИЛИ
+
+Создай файл: `frontend/components/AuditReport.styles.css`
+
+```css
+/* ========================================
+   CYBERPUNK CORPORATE THEME - AUDIT REPORT
+   ======================================== */
+
+:root {
+  /* Основные цвета */
+  --color-bg-primary: #0a0a0a;      /* Практически чёрный */
+  --color-bg-secondary: #121217;     /* Тёмный серый */
+  --color-bg-tertiary: #1a1a22;      /* Немного светлее */
+  
+  /* Неоновые цвета */
+  --color-primary: #00d9ff;          /* Циан неон */
+  --color-accent: #ff006e;           /* Розовый неон */
+  --color-success: #00ff00;           /* Зелёный */
+  --color-warning: #ffaa00;           /* Оранжевый */
+  --color-danger: #ff3333;            /* Красный */
+  
+  /* Текст */
+  --color-text-primary: #e0e0e0;
+  --color-text-secondary: #a0a0a0;
+  
+  /* Границы */
+  --color-border: #00d9ff33;          /* Циан с прозрачностью */
+  --color-border-bright: #00d9ff66;
+  
+  /* Тени и свечение */
+  --glow-primary: 0 0 20px rgba(0, 217, 255, 0.5);
+  --glow-accent: 0 0 20px rgba(255, 0, 110, 0.4);
+  --glow-danger: 0 0 20px rgba(255, 51, 51, 0.5);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* КОНТЕЙНЕР ОТЧЕТА */
+.audit-report-container {
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  padding: 30px;
+  border-radius: 0;  /* Углы как в киберпанке */
+  border: 2px solid var(--color-border);
+  box-shadow: inset 0 0 20px rgba(0, 217, 255, 0.1), 0 0 30px rgba(0, 217, 255, 0.2);
+  font-family: 'Courier New', monospace;
+  min-height: 100vh;
+}
+
+/* HEADER */
+.report-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+  padding-bottom: 20px;
+  border-bottom: 2px solid var(--color-border-bright);
+}
+
+.header-left h1.report-title {
+  margin: 0;
+  font-size: 32px;
+  font-weight: bold;
+  letter-spacing: 2px;
+}
+
+.glow-text {
+  background: linear-gradient(45deg, #00d9ff, #ff006e);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: 0 0 30px rgba(0, 217, 255, 0.5);
+  animation: glow-pulse 2s ease-in-out infinite;
+}
+
+@keyframes glow-pulse {
+  0%, 100% { filter: drop-shadow(0 0 10px #00d9ff); }
+  50% { filter: drop-shadow(0 0 20px #ff006e); }
+}
+
+.report-subtitle {
+  margin: 10px 0 0 0;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  letter-spacing: 1px;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 30px;
+}
+
+.score-display {
+  text-align: center;
+  padding: 15px 25px;
+  border: 2px solid var(--color-primary);
+  background: rgba(0, 217, 255, 0.05);
+  border-radius: 0;
+}
+
+.score-number {
+  font-size: 36px;
+  font-weight: bold;
+  display: block;
+  text-shadow: var(--glow-primary);
+}
+
+.score-label {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.close-btn {
+  background: transparent;
+  border: 2px solid var(--color-danger);
+  color: var(--color-danger);
+  width: 40px;
+  height: 40px;
+  font-size: 20px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.close-btn:hover {
+  background: var(--color-danger);
+  color: var(--color-bg-primary);
+  box-shadow: var(--glow-danger);
+}
+
+/* RISK BANNER */
+.risk-banner {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 20px;
+  margin-bottom: 30px;
+  border: 2px solid;
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(10px);
+}
+
+.risk-indicator {
+  padding: 10px 15px;
+  border-radius: 0;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-size: 12px;
+  box-shadow: 0 0 15px currentColor;
+}
+
+.risk-text {
+  flex: 1;
+  font-size: 14px;
+}
+
+.risk-verdict {
+  flex: 1;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-style: italic;
+}
+
+/* GRID LAYOUT */
+.report-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.5fr;
+  gap: 30px;
+  margin-bottom: 30px;
+}
+
+/* SECTION CARD */
+.section-card {
+  background: var(--color-bg-secondary);
+  border: 2px solid var(--color-border);
+  border-radius: 0;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.section-card:hover {
+  border-color: var(--color-border-bright);
+  box-shadow: 0 0 20px rgba(0, 217, 255, 0.3), inset 0 0 20px rgba(0, 217, 255, 0.05);
+}
+
+.section-card.expandable {
+  cursor: pointer;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  background: linear-gradient(135deg, rgba(0, 217, 255, 0.1) 0%, rgba(255, 0, 110, 0.05) 100%);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.section-header h2 {
+  margin: 0;
+  font-size: 18px;
+  letter-spacing: 1px;
+  color: var(--color-primary);
+  text-shadow: var(--glow-primary);
+}
+
+.expand-icon {
+  color: var(--color-primary);
+  transition: transform 0.3s ease;
+  font-size: 12px;
+}
+
+.expand-icon.open {
+  transform: rotate(180deg);
+}
+
+.section-content {
+  padding: 20px;
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+/* ПРОБЛЕМЫ И РИСКИ */
+.problems-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.problem-item {
+  padding: 15px;
+  border-left: 4px solid;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 0;
+}
+
+.problem-item.severity-критичное {
+  border-left-color: var(--color-danger);
+  background: rgba(255, 51, 51, 0.05);
+}
+
+.problem-item.severity-серьезное {
+  border-left-color: var(--color-warning);
+  background: rgba(255, 170, 0, 0.05);
+}
+
+.problem-item.severity-среднее {
+  border-left-color: #ffff00;
+  background: rgba(255, 255, 0, 0.02);
+}
+
+.problem-item.severity-незначительное {
+  border-left-color: var(--color-success);
+  background: rgba(0, 255, 0, 0.02);
+}
+
+.problem-severity {
+  font-size: 11px;
+  font-weight: bold;
+  text-transform: uppercase;
+  margin-bottom: 5px;
+  letter-spacing: 1px;
+}
+
+.problem-title {
+  font-weight: bold;
+  margin-bottom: 5px;
+  color: var(--color-text-primary);
+}
+
+.problem-description {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+}
+
+/* РЕКОМЕНДАЦИИ */
+.recommendations-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.recommendation-item {
+  display: flex;
+  gap: 15px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.recommendation-item:last-child {
+  border-bottom: none;
+}
+
+.rec-number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 30px;
+  height: 30px;
+  background: linear-gradient(135deg, #00d9ff, #ff006e);
+  color: var(--color-bg-primary);
+  font-weight: bold;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.rec-text {
+  flex: 1;
+  padding-top: 2px;
+  line-height: 1.6;
+}
+
+/* ПОЛНЫЙ ОТЧЕТ */
+.report-text {
+  line-height: 1.8;
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+.report-h3 {
+  color: var(--color-primary);
+  font-size: 16px;
+  margin: 20px 0 10px 0;
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: 8px;
+  text-shadow: var(--glow-primary);
+}
+
+.report-h4 {
+  color: var(--color-accent);
+  font-size: 14px;
+  margin: 15px 0 8px 0;
+}
+
+.report-li {
+  margin-left: 20px;
+  margin-bottom: 8px;
+  color: var(--color-text-secondary);
+}
+
+.report-p {
+  margin: 10px 0;
+  color: var(--color-text-secondary);
+}
+
+.report-strong {
+  color: var(--color-primary);
+  font-weight: bold;
+}
+
+/* ПУСТОЙ СТАТУС */
+.empty-state {
+  text-align: center;
+  padding: 30px;
+  color: var(--color-success);
+  font-size: 14px;
+}
+
+/* КНОПКИ */
+.btn-primary, .btn-secondary {
+  padding: 12px 24px;
+  border-radius: 0;
+  font-family: 'Courier New', monospace;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-size: 12px;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #00d9ff, #ff006e);
+  color: var(--color-bg-primary);
+  border: 2px solid transparent;
+  box-shadow: var(--glow-primary), var(--glow-accent);
+}
+
+.btn-primary:hover {
+  filter: brightness(1.2);
+  box-shadow: var(--glow-primary), var(--glow-accent), 0 0 30px rgba(255, 0, 110, 0.5);
+}
+
+.btn-secondary {
+  background: transparent;
+  border: 2px solid var(--color-primary);
+  color: var(--color-primary);
+}
+
+.btn-secondary:hover {
+  background: var(--color-primary);
+  color: var(--color-bg-primary);
+  box-shadow: var(--glow-primary);
+}
+
+.report-footer {
+  display: flex;
+  gap: 15px;
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid var(--color-border);
+}
+
+/* FOOTER */
+.report-footer-info {
+  text-align: center;
+  padding: 20px;
+  border-top: 2px solid var(--color-border);
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
+/* SCROLLBAR STYLING */
+.section-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.section-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.section-content::-webkit-scrollbar-thumb {
+  background: var(--color-primary);
+  border-radius: 0;
+  box-shadow: var(--glow-primary);
+}
+
+.section-content::-webkit-scrollbar-thumb:hover {
+  background: var(--color-accent);
+  box-shadow: var(--glow-accent);
+}
+
+/* RESPONSIVE */
+@media (max-width: 1200px) {
+  .report-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .audit-report-container {
+    padding: 20px;
+  }
+}
+
+/* ANIMATION: SCAN LINES */
+@keyframes scan {
+  0% { top: 0; }
+  100% { top: 100%; }
+}
+```
+
+---
+
+## 📝 ЧАСТЬ 5: КАК ИСПОЛЬЗОВАТЬ
+
+### В твоем Cursor проекте:
+
+1. **Добавь системный промпт в Ollama config:**
+```bash
+# backend/config/ollama_config.py
+OLLAMA_SYSTEM_PROMPTS = {
+    "tender_analysis": TENDER_ANALYSIS_SYSTEM_PROMPT,
+    "complex_audit": COMPLEX_AUDIT_SYSTEM_PROMPT
+}
+```
+
+2. **Обнови endpoint для загрузки документов:**
+```python
+@router.post("/upload-audit")
+async def upload_audit(files: UploadFile = File(...)):
+    # Используй complex_audit систем промпт если файлов > 1
+    use_complex = len(files) > 1
+    # ...
+```
+
+3. **Интегрируй React компонент:**
+```typescript
+import { AuditReport } from './components/AuditReport';
+
+// В твоем компоненте
+<AuditReport auditData={analysisResult} onClose={handleClose} />
+```
+
+---
+
+**ГОТОВО К ИСПОЛЬЗОВАНИЮ! 🚀**
+
+Теперь твоя система будет выдавать профессиональные, информативные, красиво оформленные отчеты в Cyberpunk Corporate стиле!

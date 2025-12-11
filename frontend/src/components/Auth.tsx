@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Shield, Lock, Mail, ArrowRight, Loader2, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { User } from '../types';
 import { login, register, type AuthUser } from '../services/authService';
+import ForgotPassword from './ForgotPassword';
 
 interface AuthProps {
     onLogin: (user: User) => void;
@@ -10,6 +11,7 @@ interface AuthProps {
 const Auth: React.FC<AuthProps> = ({ onLogin }) => {
     const [isLoading, setIsLoading] = useState(false);
     const [isRegisterMode, setIsRegisterMode] = useState(false);
+    const [showForgotPassword, setShowForgotPassword] = useState(false);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [name, setName] = useState('');
@@ -85,6 +87,10 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
             setIsLoading(false);
         }
     };
+
+    if (showForgotPassword) {
+        return <ForgotPassword onBack={() => setShowForgotPassword(false)} />;
+    }
 
     return (
         <div className="min-h-screen bg-[#0f1419] flex items-center justify-center relative overflow-hidden">
@@ -169,6 +175,18 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                             {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                         </button>
                     </div>
+
+                    {!isRegisterMode && (
+                        <div className="text-right">
+                            <button
+                                type="button"
+                                onClick={() => setShowForgotPassword(true)}
+                                className="text-[#4b5563] text-sm hover:text-[#00d4ff] transition-colors"
+                            >
+                                Забыли пароль?
+                            </button>
+                        </div>
+                    )}
 
                     <div className="space-y-2 text-xs text-[#a8b5cc] mt-2">
                         <label className="flex items-start gap-2">

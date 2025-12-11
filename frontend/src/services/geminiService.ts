@@ -119,23 +119,74 @@ export const analyzePackage = async (
 
     console.log(`[API] Отправка пакета файлов (${files.length} шт.), Сфера: ${industry}`);
 
-    const response = await fetch(`${API_URL}/analyze-package`, {
-        method: 'POST',
-        headers: {
-            ...getAuthHeaders(),
-        },
-        body: formData,
-    });
+    try {
+        const response = await fetch(`${API_URL}/analyze-package`, {
+            method: 'POST',
+            headers: {
+                ...getAuthHeaders(),
+            },
+            body: formData,
+        });
 
-    if (!response.ok) {
-        const apiError = await parseAPIError(response, 'Ошибка при анализе пакета документов');
-        console.error('[API Error][package]', apiError);
-        throw new APIErrorException(apiError);
+        if (!response.ok) {
+            const apiError = await parseAPIError(response, 'Ошибка при анализе пакета документов');
+            console.error('[API Error][package]', apiError);
+            
+            // Специальная обработка ошибки 503 (Ollama недоступен)
+            if (response.status === 503) {
+                apiError.message = 'Все AI-сервисы недоступны. Проверьте, запущен ли Ollama и установлены ли модели.';
+                apiError.details = {
+                    ...apiError.details,
+                    hint: 'Убедитесь, что Ollama запущен на http://localhost:11434 и установлены модели (например: ollama pull qwen2.5:0.5b)'
+                };
+            }
+            
+            throw new APIErrorException(apiError);
+        }
+
+        const data = await response.json();
+        console.log('[API Success][package]', data);
+        return data as PackageAnalysis;
+    } catch (error) {
+        if (error instanceof APIErrorException) {
+            throw error;
+        }
+        const networkError = handleNetworkError(error as Error);
+        throw new APIErrorException(networkError);
     }
+};
 
-    const data = await response.json();
-    console.log('[API Success][package]', data);
-    return data as PackageAnalysis;
+// Анализ по номеру закупки через zakupki.gov.ru
+export const analyzeFromZakupki = async (tenderId: string): Promise<AnalysisResult> => {
+    const formData = new FormData();
+    formData.append('tenderId', tenderId);
+    formData.append('industry', 'UNIVERSAL');
+
+    try {
+        const response = await fetch(`${API_URL}/analyze-from-zakupki`, {
+            method: 'POST',
+            headers: {
+                ...getAuthHeaders(),
+            },
+            body: formData,
+        });
+
+        if (!response.ok) {
+            const apiError = await parseAPIError(response, 'Ошибка анализа по номеру закупки');
+            console.error('[API Error][zakupki]', apiError);
+            throw new APIErrorException(apiError);
+        }
+
+        const data = await response.json();
+        console.log('[API Success][zakupki]', data);
+        return data as AnalysisResult;
+    } catch (error) {
+        if (error instanceof APIErrorException) {
+            throw error;
+        }
+        const networkError = handleNetworkError(error as Error);
+        throw new APIErrorException(networkError);
+    }
 };
 
 // История проверок

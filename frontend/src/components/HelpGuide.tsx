@@ -9,11 +9,27 @@ import {
   Zap,
   CheckSquare,
   AlertTriangle,
+  Star,
+  ArrowLeft,
 } from 'lucide-react';
 
-const HelpGuide: React.FC = () => {
+interface HelpGuideProps {
+  onBack?: () => void;
+}
+
+const HelpGuide: React.FC<HelpGuideProps> = ({ onBack }) => {
   return (
     <div className="animate-fade-in max-w-5xl mx-auto pb-12 overflow-y-auto h-full pr-2 custom-scrollbar">
+      {/* Кнопка назад */}
+      {onBack && (
+        <button
+          onClick={onBack}
+          className="mb-6 flex items-center gap-2 text-[#00d4ff] hover:text-[#00b3e0] transition-colors"
+        >
+          <ArrowLeft size={20} />
+          <span className="text-sm font-medium">Вернуться к анализу</span>
+        </button>
+      )}
       {/* Header */}
       <div className="mb-10 text-center">
         <h2 className="text-4xl font-bold text-white mb-4">Справочный центр Tender.Щит.AI</h2>

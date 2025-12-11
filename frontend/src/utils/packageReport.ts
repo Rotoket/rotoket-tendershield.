@@ -1,4 +1,5 @@
 import { PackageAnalysis } from '../types';
+import { verdictLabel, severityLabel } from './hubUiHelpers';
 
 /**
  * Строит текстовый отчёт по результатам комплексного аудита пакета документов.
@@ -11,7 +12,7 @@ export const buildPackageAuditReport = (result: PackageAnalysis): string => {
   lines.push('');
   lines.push(`ID пакета: ${result.packageId}`);
   lines.push(`Итоговый балл: ${Math.round(result.summaryScore)} / 100`);
-  lines.push(`Вердикт: ${result.verdict}`);
+  lines.push(`Вердикт: ${verdictLabel(result.verdict)}`);
   lines.push('');
 
   // Глобальные риски
@@ -20,7 +21,7 @@ export const buildPackageAuditReport = (result: PackageAnalysis): string => {
     lines.push('  Значимых глобальных несоответствий не выявлено.');
   } else {
     result.globalIssues.forEach((gi, idx) => {
-      lines.push(`  [${idx + 1}] ${gi.title} (${gi.severity})`);
+      lines.push(`  [${idx + 1}] ${gi.title} (${severityLabel(gi.severity)})`);
       lines.push(`      ${gi.description}`);
     });
   }
@@ -32,7 +33,7 @@ export const buildPackageAuditReport = (result: PackageAnalysis): string => {
     lines.push('');
     lines.push(`  === Документ ${idx + 1}: ${doc.filename} ===`);
     lines.push(`  Балл: ${Math.round(doc.score)} / 100`);
-    lines.push(`  Вердикт: ${doc.verdict}`);
+    lines.push(`  Вердикт: ${verdictLabel(doc.verdict)}`);
     if (doc.summary) {
       lines.push(`  Краткое резюме: ${doc.summary}`);
     }
@@ -49,7 +50,11 @@ export const buildPackageAuditReport = (result: PackageAnalysis): string => {
     if (topIssues.length) {
       lines.push('  Основные риски:');
       topIssues.forEach((iss, j) => {
-        lines.push(`    (${j + 1}) ${iss.title}${iss.severity ? ` [${iss.severity}]` : ''}`);
+        lines.push(
+          `    (${j + 1}) ${iss.title}${
+            iss.severity ? ` [${severityLabel(iss.severity)}]` : ''
+          }`,
+        );
         if (iss.description) lines.push(`        ${iss.description}`);
         if (iss.quote) lines.push(`        Цитата: "${iss.quote}"`);
       });
@@ -59,7 +64,11 @@ export const buildPackageAuditReport = (result: PackageAnalysis): string => {
     if (topFlags.length) {
       lines.push('  Красные флаги:');
       topFlags.forEach((rf, j) => {
-        lines.push(`    (${j + 1}) ${rf.title}${rf.severity ? ` [${rf.severity}]` : ''}`);
+        lines.push(
+          `    (${j + 1}) ${rf.title}${
+            rf.severity ? ` [${severityLabel(rf.severity)}]` : ''
+          }`,
+        );
         if (rf.lawReference) lines.push(`        Норма: ${rf.lawReference}`);
         if (rf.explanation) lines.push(`        ${rf.explanation}`);
         if (rf.quote) lines.push(`        Цитата: "${rf.quote}"`);

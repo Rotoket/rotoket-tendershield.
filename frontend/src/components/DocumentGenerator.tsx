@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FileText, Download, PenTool, CheckSquare, X, Loader2, Copy, Unlock, AlertTriangle } from 'lucide-react';
 import { logEvent } from '../utils/logger';
 import {
@@ -8,31 +8,77 @@ import {
     buildComplaintDraft,
 } from '../utils/docDrafts';
 
-const DocumentGenerator: React.FC = () => {
+interface DocumentGeneratorProps {
+  initialData?: {
+    dealBreakers?: string[];
+    smartQuestions?: string[];
+    tenderNumber?: string;
+    customer?: string;
+  };
+}
+
+// Хелпер для отладочного логирования
+const debugLog = (location: string, message: string, data: any = {}) => {
+    fetch('http://127.0.0.1:7242/ingest/774c37f9-2730-424c-a946-358b90a4d038', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            location,
+            message,
+            data,
+            timestamp: Date.now(),
+            sessionId: 'debug-session',
+            runId: 'run1',
+            hypothesisId: 'DocumentGenerator'
+        })
+    }).catch(() => {});
+};
+
+const DocumentGenerator: React.FC<DocumentGeneratorProps> = ({ initialData }) => {
+    // #region agent log
+    debugLog('DocumentGenerator.tsx:init', 'DocumentGenerator initialized', {
+        hasInitialData: !!initialData,
+        dealBreakersCount: initialData?.dealBreakers?.length || 0,
+        smartQuestionsCount: initialData?.smartQuestions?.length || 0
+    });
+    // #endregion
     const [activeTool, setActiveTool] = useState<string | null>(null);
     const [isGenerating, setIsGenerating] = useState(false);
     const [generatedResult, setGeneratedResult] = useState<string>('');
     const [generatedKind, setGeneratedKind] = useState<'protocol' | 'complaint' | null>(null);
 
     // Протокол разногласий
-    const [protocolTenderNumber, setProtocolTenderNumber] = useState('');
-    const [protocolCustomer, setProtocolCustomer] = useState('');
+    const [protocolTenderNumber, setProtocolTenderNumber] = useState(initialData?.tenderNumber || '');
+    const [protocolCustomer, setProtocolCustomer] = useState(initialData?.customer || '');
     const [protocolSubject, setProtocolSubject] = useState('');
     const [protocolRef, setProtocolRef] = useState('');
-    const [protocolRows, setProtocolRows] = useState<ProtocolRowForm[]>([
-        { clause: '', customerVersion: '', supplierVersion: '', justification: '' },
-    ]);
+    const [protocolRows, setProtocolRows] = useState<ProtocolRowForm[]>(
+        initialData?.dealBreakers && initialData.dealBreakers.length > 0
+            ? initialData.dealBreakers.map(breaker => ({
+                clause: breaker,
+                customerVersion: breaker,
+                supplierVersion: 'Требуется уточнение',
+                justification: 'Выявлено при анализе тендерной документации',
+            }))
+            : [{ clause: '', customerVersion: '', supplierVersion: '', justification: '' }]
+    );
 
     // Жалоба в ФАС
     const [complaintTo, setComplaintTo] = useState('Территориальное управление ФАС России');
     const [complaintFrom, setComplaintFrom] = useState('ООО "Участник"');
-    const [complaintTenderNumber, setComplaintTenderNumber] = useState('');
-    const [complaintCustomer, setComplaintCustomer] = useState('');
+    const [complaintTenderNumber, setComplaintTenderNumber] = useState(initialData?.tenderNumber || '');
+    const [complaintCustomer, setComplaintCustomer] = useState(initialData?.customer || '');
     const [complaintTopic, setComplaintTopic] = useState('Жалоба на документацию электронного аукциона');
     const [complaintRef, setComplaintRef] = useState('');
-    const [violations, setViolations] = useState<ViolationForm[]>([
-        { point: '', argument: '', law: '' },
-    ]);
+    const [violations, setViolations] = useState<ViolationForm[]>(
+        initialData?.dealBreakers && initialData.dealBreakers.length > 0
+            ? initialData.dealBreakers.map(breaker => ({
+                point: breaker,
+                argument: 'Выявлено при анализе тендерной документации',
+                law: '44-ФЗ',
+            }))
+            : [{ point: '', argument: '', law: '' }]
+    );
 
     const tools = [
         {
@@ -48,6 +94,20 @@ const DocumentGenerator: React.FC = () => {
             icon: PenTool,
         },
     ];
+
+    // Автоматически открываем протокол, если есть данные из анализа
+    useEffect(() => {
+        if (initialData?.dealBreakers && initialData.dealBreakers.length > 0 && !activeTool) {
+            // #region agent log
+            debugLog('DocumentGenerator.tsx:useEffect:autoOpen', 'Auto-opening protocol with analysis data', {
+                dealBreakersCount: initialData.dealBreakers.length,
+                dealBreakers: initialData.dealBreakers
+            });
+            // #endregion
+            setActiveTool('protocol');
+            logEvent('DocumentGenerator', 'Автоматически открыт протокол разногласий с данными из анализа', 'info');
+        }
+    }, [initialData]);
 
     const closeTool = () => {
         logEvent('DocumentGenerator', 'Закрыта модалка генератора документов');

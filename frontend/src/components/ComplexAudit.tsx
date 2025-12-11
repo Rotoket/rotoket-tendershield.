@@ -6,6 +6,18 @@ import { logEvent } from '../utils/logger';
 import { buildPackageAuditReport } from '../utils/packageReport';
 import RateLimitError from './RateLimitError';
 import type { APIError } from '../utils/apiErrorHandler';
+// Новые компоненты для AI Business Advisor
+import HeroVerdict from './audit/HeroVerdict';
+import AIConsultantIntro from './audit/AIConsultantIntro';
+import FinancialMetricsGrid from './audit/FinancialMetricsGrid';
+import RiskNarrative from './audit/RiskNarrative';
+import DecisionSupport from './audit/DecisionSupport';
+// Новые компоненты для AI Business Advisor
+import HeroVerdict from './audit/HeroVerdict';
+import AIConsultantIntro from './audit/AIConsultantIntro';
+import FinancialMetricsGrid from './audit/FinancialMetricsGrid';
+import RiskNarrative from './audit/RiskNarrative';
+import DecisionSupport from './audit/DecisionSupport';
 
 interface LegalSnippetVm {
   id: string;
@@ -42,9 +54,11 @@ interface ComplexAuditProps {
   onSelectForCalculator?: (preset: CalculatorPreset) => void;
   // Открыть экран калькулятора
   onOpenCalculator?: () => void;
+  // Открыть генератор документов с данными из анализа
+  onOpenGenerator?: (dealBreakers: string[], smartQuestions?: string[]) => void;
 }
 
-const ComplexAudit: React.FC<ComplexAuditProps> = ({ onSelectForCalculator, onOpenCalculator }) => {
+const ComplexAudit: React.FC<ComplexAuditProps> = ({ onSelectForCalculator, onOpenCalculator, onOpenGenerator }) => {
   const [files, setFiles] = useState<File[]>([]);
   const [industry, setIndustry] = useState<string>('UNIVERSAL');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -64,6 +78,9 @@ const ComplexAudit: React.FC<ComplexAuditProps> = ({ onSelectForCalculator, onOp
   const [inputMsg, setInputMsg] = useState('');
   const chatEndRef = useRef<HTMLDivElement>(null);
 
+  // Legal references для рисков (интеграция с Базой знаний)
+  const [legalReferencesMap, setLegalReferencesMap] = useState<Map<string, LegalSnippetVm[]>>(new Map());
+
   useEffect(() => {
     if (!files.length && messages.length === 0) {
       setMessages([{
@@ -78,6 +95,27 @@ const ComplexAudit: React.FC<ComplexAuditProps> = ({ onSelectForCalculator, onOp
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // Автопоиск норм для глобальных рисков
+  useEffect(() => {
+    if (result && result.globalIssues.length > 0) {
+      const loadLegalRefs = async () => {
+        const newMap = new Map<string, LegalSnippetVm[]>();
+        for (const issue of result.globalIssues) {
+          try {
+            const legalData = await searchLegal(issue.title);
+            if (legalData.items && legalData.items.length > 0) {
+              newMap.set(issue.title, legalData.items.slice(0, 3)); // Берем первые 3 результата
+            }
+          } catch (err) {
+            console.error(`Ошибка загрузки норм для риска "${issue.title}":`, err);
+          }
+        }
+        setLegalReferencesMap(newMap);
+      };
+      loadLegalRefs();
+    }
+  }, [result]);
 
   const buildPresetFromDoc = (
     pkg: PackageAnalysis,
@@ -409,25 +447,83 @@ const ComplexAudit: React.FC<ComplexAuditProps> = ({ onSelectForCalculator, onOp
 
           {result && (
             <div className="animate-fade-in space-y-6">
-              {/* Package Summary Card */}
-              <div className={`bg-[#1a1f2e] border rounded-2xl p-6 ${verdictColor(result.verdict)}`}>
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-xs uppercase tracking-wide opacity-80">Итог по пакету</span>
-                  <span className="text-xs opacity-60">ID: {result.packageId.slice(0, 8)}...</span>
-                </div>
-                <div className="text-4xl font-bold mb-2">{Math.round(result.summaryScore)} / 100</div>
-                <div className="text-base mb-3">Вердикт: {result.verdict}</div>
-                <p className="text-sm text-slate-300 mb-4">
-                  Балл рассчитывается автоматически, окончательное решение принимает специалист.
-                </p>
-                <button
-                  onClick={handleDownloadReport}
-                  className="inline-flex items-center justify-center rounded-lg border border-[#00d4ff]/60 text-[#00d4ff] px-4 py-2 text-sm hover:bg-[#00d4ff]/10 transition-colors"
-                >
-                  <FileSpreadsheet size={16} className="mr-2" />
-                  Скачать отчёт (.txt)
-                </button>
-              </div>
+              {/* 1. HERO ZONE: ВЕРДИКТ ЗА 5 СЕКУНД */}
+              <HeroVerdict
+                verdict={result.verdict as VerdictType}
+                score={Math.round(result.summaryScore)}
+                executiveSummary={result.hub?.recommendation?.summaryShort || `Анализ пакета из ${result.documents.length} документов завершен. Вердикт: ${result.verdict}.`}
+                mainProblem={result.globalIssues.length > 0 ? result.globalIssues[0].title : undefined}
+                onShowDetails={() => {
+                  window.scrollTo({ top: 600, behavior: 'smooth' });
+                }}
+                onGenerateRefusal={() => {
+                  logEvent('ComplexAudit', 'Запрошено формирование отказа', 'info');
+                }}
+              />
+
+              {/* 2. ЗОНА СОВЕТНИКА: ГОЛОС ЭКСПЕРТА */}
+              <AIConsultantIntro
+                verdict={result.verdict as VerdictType}
+                executiveSummary={result.hub?.recommendation?.summaryShort}
+                summary={`Проанализирован пакет из ${result.documents.length} документов. ${result.globalIssues.length > 0 ? `Обнаружено ${result.globalIssues.length} глобальных рисков.` : 'Значимых глобальных рисков не обнаружено.'}`}
+                score={Math.round(result.summaryScore)}
+              />
+
+              {/* 3. ЗОНА РЕНТГЕН: ФИНАНСЫ И УСЛОВИЯ (Grid) */}
+              {result.hub && result.hub.baseInfo && (
+                <FinancialMetricsGrid
+                  passport={{
+                    nmck: result.hub.baseInfo.nmckTotal || 'Не указано',
+                    fz: result.hub.baseInfo.fz || '44-ФЗ',
+                    advance: result.hub.payments.advance || 'Нет',
+                    secureBid: result.hub.guarantees.text || 'Нет',
+                    deadlineExecution: result.hub.timeline.comment || 'Не указано',
+                    region: result.hub.baseInfo.region || 'Не указано',
+                  }}
+                  financialAnalysis={result.hub.financial ? {
+                    margin_risk: result.hub.financial.lossRiskLevel === 'high' ? 'High' : result.hub.financial.lossRiskLevel === 'medium' ? 'Medium' : 'Low',
+                    cash_gap_risk: result.hub.payments.advance === 'Нет' || result.hub.payments.advance === '0%' ? 'Yes' : 'No',
+                    reasoning: result.hub.financial.marginComment || '',
+                  } : undefined}
+                />
+              )}
+
+              {/* 4. RISK NARRATIVE - Повествовательные карточки рисков */}
+              <RiskNarrative
+                risks={result.globalIssues.map(gi => ({
+                  title: gi.title,
+                  description: gi.description,
+                  severity: gi.severity.toLowerCase(),
+                  recommendation: gi.details?.recommendation,
+                  legalReferences: legalReferencesMap.get(gi.title), // 🆕 Релевантные нормы
+                }))}
+                dealBreakers={result.globalIssues
+                  .filter(gi => gi.severity.toLowerCase() === 'critical' || gi.severity.toLowerCase() === 'high')
+                  .map(gi => gi.title)}
+                onGenerateProtocol={onOpenGenerator ? (dealBreakers) => {
+                  const smartQuestions = result.hub?.recommendation?.actions?.map(a => a.text) || [];
+                  onOpenGenerator(dealBreakers, smartQuestions);
+                } : undefined}
+                onViewKnowledge={(query) => {
+                  // Переход в Базу знаний с запросом
+                  if (onOpenGenerator) {
+                    // Используем временное решение - открываем генератор, но можно добавить отдельный обработчик
+                    logEvent('ComplexAudit', `Переход в Базу знаний с запросом: ${query}`, 'info');
+                  }
+                }}
+              />
+
+              {/* 5. DECISION SUPPORT - Сценарии и финансовая поддержка */}
+              <DecisionSupport
+                verdict={result.verdict as VerdictType}
+                score={Math.round(result.summaryScore)}
+                financialAnalysis={result.hub?.financial ? {
+                  margin_risk: result.hub.financial.lossRiskLevel === 'high' ? 'High' : result.hub.financial.lossRiskLevel === 'medium' ? 'Medium' : 'Low',
+                  cash_gap_risk: result.hub.payments.advance === 'Нет' || result.hub.payments.advance === '0%' ? 'Yes' : 'No',
+                  reasoning: result.hub.financial.marginComment || '',
+                } : undefined}
+                smartQuestions={result.hub?.recommendation?.actions?.map(a => a.text) || []}
+              />
               {/* Documents List */}
               <div className="bg-[#1a1f2e] border border-[#2a3441] rounded-2xl overflow-hidden">
                 <div className="bg-[#0f1419] px-6 py-4 border-b border-[#2a3441] flex items-center justify-between">

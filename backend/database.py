@@ -191,6 +191,21 @@ class Usage(Base):
     )
 
 
+class PasswordResetToken(Base):
+    """Модель для токенов сброса пароля"""
+    __tablename__ = "password_reset_tokens"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    token = Column(String, unique=True, nullable=False, index=True)
+    expires_at = Column(DateTime, nullable=False, index=True)
+    used = Column(Boolean, default=False, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # Связи
+    user = relationship("User")
+
+
 # Настройка подключения к БД
 def get_database_url() -> str:
     """Получает URL подключения к БД из переменных окружения или config"""

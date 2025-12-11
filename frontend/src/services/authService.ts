@@ -167,3 +167,43 @@ export const isAuthenticated = (): boolean => {
   return getToken() !== null;
 };
 
+/**
+ * Запрос на сброс пароля
+ */
+export const forgotPassword = async (email: string): Promise<{ message: string }> => {
+  const response = await fetch(`${API_URL}/auth/forgot-password`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ email }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ detail: 'Ошибка запроса сброса пароля' }));
+    throw new Error(errorData.detail || `Ошибка запроса сброса пароля: ${response.status}`);
+  }
+
+  return await response.json();
+};
+
+/**
+ * Сброс пароля по токену
+ */
+export const resetPassword = async (token: string, newPassword: string): Promise<{ message: string }> => {
+  const response = await fetch(`${API_URL}/auth/reset-password`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ token, new_password: newPassword }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ detail: 'Ошибка сброса пароля' }));
+    throw new Error(errorData.detail || `Ошибка сброса пароля: ${response.status}`);
+  }
+
+  return await response.json();
+};
+

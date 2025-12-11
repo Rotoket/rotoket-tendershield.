@@ -10,13 +10,17 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, user, onLogout }) => {
+  // Проверяем, является ли пользователь админом
+  const isAdmin = user?.email === 'admin@tendershield.pro' || user?.email?.toLowerCase().includes('admin');
+
   const menuItems = [
     { id: AppView.AUDIT, label: 'Анализ тендера', icon: FileSearch },
     { id: AppView.GENERATOR, label: 'Генератор', icon: FileText },
     { id: AppView.CALCULATOR, label: 'Калькулятор', icon: Calculator },
     { id: AppView.HISTORY, label: 'История проверок', icon: Clock },
     { id: AppView.KNOWLEDGE, label: 'База знаний', icon: BookOpen },
-    { id: AppView.ANALYTICS, label: 'Аналитика', icon: BarChart3 },
+    // Аналитика только для админов
+    ...(isAdmin ? [{ id: AppView.ANALYTICS, label: 'Аналитика', icon: BarChart3 }] : []),
     { id: AppView.HELP, label: 'Помощь', icon: HelpCircle },
   ];
 

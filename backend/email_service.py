@@ -296,4 +296,73 @@ class EmailService:
         """
         
         return EmailService.send_email(email, subject, html_body)
+    
+    @staticmethod
+    def send_password_reset_email(email: str, name: str = None, reset_token: str = None, reset_url: str = None) -> bool:
+        """Отправляет письмо со ссылкой для сброса пароля"""
+        subject = "Сброс пароля в Tender Shield Pro"
+        
+        name_display = name if name else "Специалист"
+        
+        # Если передан reset_url, используем его, иначе формируем из токена
+        if not reset_url and reset_token:
+            # Для локальной разработки используем localhost, в продакшене нужно будет заменить на реальный домен
+            # Можно настроить через переменную окружения FRONTEND_URL
+            frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:5173')
+            reset_url = f"{frontend_url}/?token={reset_token}"
+        elif not reset_url:
+            frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:5173')
+            reset_url = f"{frontend_url}/"
+        
+        html_body = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <style>
+                body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+                .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+                .header {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }}
+                .content {{ background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }}
+                .button {{ display: inline-block; padding: 12px 30px; background: #667eea; color: white; text-decoration: none; border-radius: 5px; margin-top: 20px; }}
+                .warning {{ background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1>🔐 Сброс пароля</h1>
+                </div>
+                <div class="content">
+                    <p>Привет, {name_display}!</p>
+                    
+                    <p>Мы получили запрос на сброс пароля для вашего аккаунта в Tender Shield Pro.</p>
+                    
+                    <p>Для сброса пароля нажмите на кнопку ниже:</p>
+                    
+                    <a href="{reset_url}" class="button">Сбросить пароль</a>
+                    
+                    <div class="warning">
+                        <p><strong>⚠️ Важно:</strong></p>
+                        <ul>
+                            <li>Ссылка действительна в течение <strong>1 часа</strong></li>
+                            <li>Если вы не запрашивали сброс пароля, просто проигнорируйте это письмо</li>
+                            <li>Ваш пароль не изменится, пока вы не перейдёте по ссылке и не введёте новый пароль</li>
+                        </ul>
+                    </div>
+                    
+                    <p>Если кнопка не работает, скопируйте и вставьте эту ссылку в браузер:</p>
+                    <p style="word-break: break-all; color: #667eea;">{reset_url}</p>
+                    
+                    <p style="margin-top: 30px; color: #666; font-size: 14px;">
+                        С уважением,<br>
+                        Команда Tender Shield Pro
+                    </p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        
+        return EmailService.send_email(email, subject, html_body)
 

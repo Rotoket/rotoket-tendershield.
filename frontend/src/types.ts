@@ -1,7 +1,7 @@
 
 export enum AppView {
   LOGIN = 'LOGIN',
-  ANALYZER = 'ANALYZER', // Анализ одного документа
+  ANALYZER = 'ANALYZER', // Главный экран
   AUDIT = 'AUDIT', // Комплексный аудит пакета документов
   GENERATOR = 'GENERATOR', // Генератор документов
   KNOWLEDGE = 'KNOWLEDGE', // База знаний
@@ -85,6 +85,15 @@ export interface AuditHistoryItem {
   files: string[];
   summaryScore: number;
   verdict: VerdictType | string;
+  // Новые поля для AI Business Advisor
+  executive_summary?: string;
+  deal_breakers?: string[];
+  financial_analysis?: {
+    margin_risk: 'High' | 'Low' | 'Medium';
+    cash_gap_risk: 'Yes' | 'No';
+    reasoning: string;
+  };
+  smart_questions?: string[];
 }
 
 export interface AuditHistoryResponse {
@@ -175,6 +184,7 @@ export interface AnalysisResult {
     description: string;
     severity: string;
     quote?: string; // Добавили цитату
+    recommendation?: string; // Рекомендация по исправлению
   }[];
   // НОВОЕ ПОЛЕ:
   specs: {
@@ -191,19 +201,6 @@ export interface AnalysisResult {
     explanation?: string;
     quote?: string;
   }[];
-  // Стоп-факторы (DEAL BREAKERS)
-  dealBreakers?: {
-    title: string;
-    quote?: string;
-    essence: string;
-    status: string;
-    lawReference?: string | null;
-    action?: {
-      type: string;
-      buttonLabel: string;
-      justification: string;
-    };
-  }[];
   keywordMatches: KeywordMatch[];
   // Хаб-сводка для тендерного специалиста (краткий обзор)
   hub?: TenderHubSummary;
@@ -214,34 +211,15 @@ export interface AnalysisResult {
     message: string;
     benefits?: string[];
   };
-  // Структурированные ответы на 25 вопросов тендерного анализа
-  structuredAnswers?: {
-    customer?: string;
-    subject?: string;
-    nmck?: string;
-    applicationDeadline?: string;
-    executionDeadline?: string;
-    participantRequirements?: string;
-    securityAmounts?: string;
-    paymentTerms?: string;
-    evaluationCriteria?: string;
-    contradictions?: string;
-    penalties?: string;
-    guarantees?: string;
-    additionalRequirements?: string;
-    tenderRisks?: string;
-    documentationRequirements?: string;
-    financialRequirements?: string;
-    confidentiality?: string;
-    customerHistory?: string;
-    subcontractingLimits?: string;
-    conflictsOfInterest?: string;
-    discriminationSigns?: string;
-    terminationConditions?: string;
-    competitionLevel?: string;
-    insuranceRequirements?: string;
-    additionalRisks?: string;
+  // НОВЫЕ ПОЛЯ ДЛЯ AI BUSINESS ADVISOR
+  executive_summary?: string; // Жесткое резюме в 3-5 строк (Вердикт + Главная проблема)
+  financial_analysis?: {
+    margin_risk: 'High' | 'Low' | 'Medium';
+    cash_gap_risk: 'Yes' | 'No';
+    reasoning: string;
   };
+  deal_breakers?: string[]; // Список критических стоп-факторов
+  smart_questions?: string[]; // 3-5 вопросов Заказчику для вскрытия подвоха
 }
 
 export interface ChatMessage {
@@ -310,19 +288,7 @@ export interface PackageDocumentAnalysis {
     explanation?: string;
     quote?: string;
   }[];
-  financialSummary?: {
-    nmck?: string;
-    estimatedCost?: string;
-    marginComment?: string;
-    advance?: string;
-    bidSecurity?: string;
-    contractSecurity?: string;
-    paymentTerms?: string;
-    penaltyRiskRubles?: string;
-    workingCapitalNeeded?: string;
-    guaranteeAmount?: string;
-    [key: string]: any;
-  };
+  financialSummary?: any;
   timelineSummary?: any;
   participantRequirements?: {
     licenses?: string[];
@@ -339,34 +305,6 @@ export interface PackageDocumentAnalysis {
     [key: string]: any;
   };
   actions?: any[];
-  // Структурированные ответы на 25 вопросов тендерного анализа
-  structuredAnswers?: {
-    customer?: string;
-    subject?: string;
-    nmck?: string;
-    applicationDeadline?: string;
-    executionDeadline?: string;
-    participantRequirements?: string;
-    securityAmounts?: string;
-    paymentTerms?: string;
-    evaluationCriteria?: string;
-    contradictions?: string;
-    penalties?: string;
-    guarantees?: string;
-    additionalRequirements?: string;
-    tenderRisks?: string;
-    documentationRequirements?: string;
-    financialRequirements?: string;
-    confidentiality?: string;
-    customerHistory?: string;
-    subcontractingLimits?: string;
-    conflictsOfInterest?: string;
-    discriminationSigns?: string;
-    terminationConditions?: string;
-    competitionLevel?: string;
-    insuranceRequirements?: string;
-    additionalRisks?: string;
-  };
 }
 
 // Глобальные риски по всему пакету документов

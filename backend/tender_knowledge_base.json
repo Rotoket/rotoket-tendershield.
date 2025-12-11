@@ -1,0 +1,2057 @@
+{
+  "version": "1.0",
+  "created_at": "2025-12-09T18:20:03.529069",
+  "tenders": {
+    "13": {
+      "tender_id": "13",
+      "industry": "ENGINEERING",
+      "files_count": 3,
+      "documents": {
+        "Извещение_ЗК_Молоко_янв_май_2026_МСП_в1.2_с_налогами.docx": {
+          "filename": "Извещение_ЗК_Молоко_янв_май_2026_МСП_в1.2_с_налогами.docx",
+          "docType": "DRAFT_CONTRACT",
+          "text_length": 31367,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "См. документацию",
+            "fz": "44-ФЗ",
+            "region": "г. Южно"
+          },
+          "contractRiskSummary": {
+            "rnpMentioned": false
+          }
+        },
+        "Обоснование_НМЦК__анализ_рынка__по_КП_ДЕПАРТАМЕНТА_ЭП.pdf": {
+          "filename": "Обоснование_НМЦК__анализ_рынка__по_КП_ДЕПАРТАМЕНТА_ЭП.pdf",
+          "docType": "ONMCK_JUSTIFICATION",
+          "text_length": 2067,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "08.12.2025",
+            "fz": "Не указано",
+            "region": "Не указано"
+          },
+          "smetaSummary": {
+            "hasVAT": false
+          }
+        },
+        "ПРОЕКТ_Дог__СОШ6_26_3_МОЛ01_05.docx": {
+          "filename": "ПРОЕКТ_Дог__СОШ6_26_3_МОЛ01_05.docx",
+          "docType": "GENERIC",
+          "text_length": 37094,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "18.07.2011",
+            "fz": "223-ФЗ",
+            "region": "Товара: 693013, Российская Федерация, Сахалинская область,                             г. Южно-Сахалинск, улица Комсомольская, дом 308."
+          }
+        }
+      },
+      "extracted_data": {
+        "nmck": "Не найдено",
+        "industry": "ENGINEERING",
+        "has_inspection": false,
+        "has_smeta": true,
+        "has_contract": true
+      }
+    },
+    "14": {
+      "tender_id": "14",
+      "industry": "ENGINEERING",
+      "files_count": 2,
+      "documents": {
+        "Извещение (ОРАДИ).docx": {
+          "filename": "Извещение (ОРАДИ).docx",
+          "docType": "ONMCK_JUSTIFICATION",
+          "text_length": 39195,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "30.12.2026",
+            "fz": "44-ФЗ",
+            "region": "683020, Российская Федерация, Камчатский край,"
+          },
+          "smetaSummary": {
+            "totalAmountNumeric": 1600000.0,
+            "totalAmount": "1 600 000,00",
+            "hasVAT": true
+          }
+        },
+        "Проект договора (ОРАДИ).docx": {
+          "filename": "Проект договора (ОРАДИ).docx",
+          "docType": "DRAFT_CONTRACT",
+          "text_length": 36369,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "11.03.1992",
+            "fz": "223-ФЗ",
+            "region": "г. Петропавловск"
+          },
+          "contractRiskSummary": {
+            "penaltyDailyMaxPercent": 0.1,
+            "rnpMentioned": false
+          }
+        }
+      },
+      "extracted_data": {
+        "nmck": "Не найдено",
+        "industry": "ENGINEERING",
+        "has_inspection": false,
+        "has_smeta": true,
+        "has_contract": true
+      }
+    },
+    "15": {
+      "tender_id": "15",
+      "industry": "ENGINEERING",
+      "files_count": 2,
+      "documents": {
+        "Извещение.docx": {
+          "filename": "Извещение.docx",
+          "docType": "ONMCK_JUSTIFICATION",
+          "text_length": 38990,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "31.12.2026",
+            "fz": "44-ФЗ",
+            "region": "683020, Российская Федерация, Камчатский край,"
+          },
+          "smetaSummary": {
+            "totalAmountNumeric": 3501200.0,
+            "totalAmount": "3 501 200,00",
+            "hasVAT": true
+          }
+        },
+        "Проект договора.docx": {
+          "filename": "Проект договора.docx",
+          "docType": "DRAFT_CONTRACT",
+          "text_length": 36432,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "11.03.1992",
+            "fz": "223-ФЗ",
+            "region": "г. Петропавловск"
+          },
+          "contractRiskSummary": {
+            "penaltyDailyMaxPercent": 0.1,
+            "rnpMentioned": false
+          }
+        }
+      },
+      "extracted_data": {
+        "nmck": "Не найдено",
+        "industry": "ENGINEERING",
+        "has_inspection": false,
+        "has_smeta": true,
+        "has_contract": true
+      }
+    },
+    "16": {
+      "tender_id": "16",
+      "industry": "REAL_ESTATE",
+      "files_count": 4,
+      "documents": {
+        "Описание объекта закупки (филе трески, консервы рыбные) .docx": {
+          "filename": "Описание объекта закупки (филе трески, консервы рыбные) .docx",
+          "docType": "TECH_SPEC_OBJECT",
+          "text_length": 8843,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "30.05.2012",
+            "fz": "44-ФЗ",
+            "region": "Не указано"
+          }
+        },
+        "Проект Контракта (филе трески, консервы рыбные).docx": {
+          "filename": "Проект Контракта (филе трески, консервы рыбные).docx",
+          "docType": "DRAFT_CONTRACT",
+          "text_length": 75833,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "См. документацию",
+            "fz": "44-ФЗ",
+            "region": "г. Вилючинск"
+          },
+          "contractRiskSummary": {
+            "unilateralTerminationCustomer": true,
+            "unilateralTerminationSupplier": true,
+            "unilateralTerminationExamples": [
+              "иях, предусмотренных настоящим Контрактом.\n\n4.1.4. В случае принятия решения об одностороннем отказе от исполнения Контракта Поставщик с использованием единой информационной системы формирует решение об одностороннем отказе от исполнения контракта, подписывает его усиленной электронной подписью лица, имеющего право действовать от",
+              "ставщика, и размещает такое решение в единой информационной системе. Решение об одностороннем отказе от исполнения контракта не позднее одного часа с момента его размещения в единой информационной системе в автоматически с использованием единой информационной системы направляется Заказчику. Датой поступления Заказчику решения об",
+              "ационной системы направляется Заказчику. Датой поступления Заказчику решения об одностороннем отказе от исполнения контракта считается дата размещения в соответствии с настоящим пунктом такого решения в единой информационной системе в соответствии с часовой зоной, в которой расположен Заказчик.\n\nПоступление решения об односторонн"
+            ],
+            "rnpMentioned": true
+          }
+        },
+        "Требования и инструкция к содержанию и составу заявки (филе трески, консервы рыбные).docx": {
+          "filename": "Требования и инструкция к содержанию и составу заявки (филе трески, консервы рыбные).docx",
+          "docType": "TECH_SPEC_OBJECT",
+          "text_length": 54067,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "05.04.2013",
+            "fz": "44-ФЗ",
+            "region": "Не указано"
+          }
+        }
+      },
+      "extracted_data": {
+        "nmck": "Не найдено",
+        "industry": "REAL_ESTATE",
+        "has_inspection": false,
+        "has_smeta": false,
+        "has_contract": true
+      }
+    },
+    "17": {
+      "tender_id": "17",
+      "industry": "REAL_ESTATE",
+      "files_count": 5,
+      "documents": {
+        "Приложение № 1 к извещению -Обоснование НМЦК.xlsx": {
+          "filename": "Приложение № 1 к извещению -Обоснование НМЦК.xlsx",
+          "docType": "ONMCK_JUSTIFICATION",
+          "text_length": 665,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "См. документацию",
+            "fz": "Не указано",
+            "region": "Не указано"
+          },
+          "smetaSummary": {
+            "totalAmountNumeric": 3000.0,
+            "totalAmount": "3000 ",
+            "hasVAT": false
+          }
+        },
+        "Приложение № 2 к извещению - Проект муниципального контракта.docx": {
+          "filename": "Приложение № 2 к извещению - Проект муниципального контракта.docx",
+          "docType": "DRAFT_CONTRACT",
+          "text_length": 34257,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "05.04.2013",
+            "fz": "44-ФЗ",
+            "region": "г. Хабаровск"
+          },
+          "contractRiskSummary": {
+            "unilateralTerminationCustomer": true,
+            "unilateralTerminationSupplier": true,
+            "unilateralTerminationExamples": [
+              "я рекламационного акта обнаруженных недостатков  (дефектов) Заказчик составляет односторонний акт.\n\n\t\t7.8. При не устранении Поставщиком дефектов (недостатков) в сроки, указанные",
+              "сторжение контракта допускается по соглашению Сторон, по решению суда, в случае одностороннего отказа Стороны контракта от исполнения контракта в соответствии с гражданским законодательством.\n\n10.3. Стороны вправе требовать расторжения Контракта в случаях, установленных",
+              "етствующего соглашения о расторжении.\n\n10.5. Заказчик вправе принять решение об одностороннем отказе от исполнения Контракта в случаях, предусмотренных Гражданским кодексом РФ для одностороннего отказа от исполнения обязательств, предусмотренных контрактом.\n\n10.6. Поставщик вправе принять решение об одностороннем отказе от исполн"
+            ],
+            "rnpMentioned": false
+          }
+        },
+        "Приложение № 3 к извещению - Описание объекта закупки.docx": {
+          "filename": "Приложение № 3 к извещению - Описание объекта закупки.docx",
+          "docType": "TECH_SPEC_OBJECT",
+          "text_length": 4533,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "08.02.2017",
+            "fz": "Не указано",
+            "region": "Не указано"
+          }
+        },
+        "Приложение № 4 к извещению - Требования к содержанию и составу заявки.docx": {
+          "filename": "Приложение № 4 к извещению - Требования к содержанию и составу заявки.docx",
+          "docType": "BID_REQUIREMENTS",
+          "text_length": 18777,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "См. документацию",
+            "fz": "44-ФЗ",
+            "region": "Не указано"
+          }
+        },
+        "Приложение № 4.1. к извещению Инструкция по заполнению заявки.docx": {
+          "filename": "Приложение № 4.1. к извещению Инструкция по заполнению заявки.docx",
+          "docType": "NOTICE",
+          "text_length": 9553,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "См. документацию",
+            "fz": "44-ФЗ",
+            "region": "Не указано"
+          }
+        }
+      },
+      "extracted_data": {
+        "nmck": "Не найдено",
+        "industry": "REAL_ESTATE",
+        "has_inspection": false,
+        "has_smeta": true,
+        "has_contract": true
+      }
+    },
+    "18": {
+      "tender_id": "18",
+      "industry": "IT",
+      "files_count": 5,
+      "documents": {
+        "Информационная карта.docx": {
+          "filename": "Информационная карта.docx",
+          "docType": "TECH_SPEC_OBJECT",
+          "text_length": 33680,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "01.06.2023",
+            "fz": "44-ФЗ",
+            "region": "Не указано"
+          }
+        },
+        "ПРИЛОЖЕНИЕ 1 ООЗ.docx": {
+          "filename": "ПРИЛОЖЕНИЕ 1 ООЗ.docx",
+          "docType": "TECH_SPEC_OBJECT",
+          "text_length": 40194,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "См. документацию",
+            "fz": "44-ФЗ",
+            "region": "место приготовления питания – по месту нахождения Исполнителя. Место доставки готового питания - 677005, Республика Саха (Якутия), г. Якутск"
+          }
+        },
+        "ПРИЛОЖЕНИЕ 2 ОНМЦК.xlsx": {
+          "filename": "ПРИЛОЖЕНИЕ 2 ОНМЦК.xlsx",
+          "docType": "ONMCK_JUSTIFICATION",
+          "text_length": 1468,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "02.10.2013",
+            "fz": "Не указано",
+            "region": "Не указано"
+          },
+          "smetaSummary": {
+            "totalAmountNumeric": 99999685.0,
+            "totalAmount": "99999685",
+            "hasVAT": false
+          }
+        },
+        "Приложение 3 Требования к содержанию, составу заявки на участие в закупке. Инструкция по заполнению заявки участниками закупки (ЭА).docx": {
+          "filename": "Приложение 3 Требования к содержанию, составу заявки на участие в закупке. Инструкция по заполнению заявки участниками закупки (ЭА).docx",
+          "docType": "BID_REQUIREMENTS",
+          "text_length": 72385,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "19.06.2025",
+            "fz": "44-ФЗ",
+            "region": "г.\n\nПриложение"
+          }
+        },
+        "ПРИЛОЖЕНИЕ 4 ПК.docx": {
+          "filename": "ПРИЛОЖЕНИЕ 4 ПК.docx",
+          "docType": "GENERIC",
+          "text_length": 37088,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "31.12.2026",
+            "fz": "44-ФЗ",
+            "region": "согласно по Техническому заданию (Приложение №1 к Контракту)."
+          }
+        }
+      },
+      "extracted_data": {
+        "nmck": "Не найдено",
+        "industry": "IT",
+        "has_inspection": false,
+        "has_smeta": true,
+        "has_contract": false
+      }
+    },
+    "19": {
+      "tender_id": "19",
+      "industry": "REAL_ESTATE",
+      "files_count": 4,
+      "documents": {
+        "Обоснование и расчет НМЦЕ.docx": {
+          "filename": "Обоснование и расчет НМЦЕ.docx",
+          "docType": "ONMCK_JUSTIFICATION",
+          "text_length": 2294,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "02.10.2013",
+            "fz": "44-ФЗ",
+            "region": "Не указано"
+          },
+          "smetaSummary": {
+            "hasVAT": false
+          }
+        },
+        "Описание объекта закупки (1).docx": {
+          "filename": "Описание объекта закупки (1).docx",
+          "docType": "TECH_SPEC_OBJECT",
+          "text_length": 11756,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "См. документацию",
+            "fz": "Не указано",
+            "region": "Россия, Камчатский край, Соболевский р-н, с.п. Соболевское, в границах сельского поселения."
+          }
+        },
+        "Проект контракта.docx": {
+          "filename": "Проект контракта.docx",
+          "docType": "TECH_SPEC_OBJECT",
+          "text_length": 56752,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "31.12.2026",
+            "fz": "44-ФЗ",
+            "region": "г.\n\nАдминистрация"
+          }
+        },
+        "Требования к содержанию заявки и инструкция по заполнению.docx": {
+          "filename": "Требования к содержанию заявки и инструкция по заполнению.docx",
+          "docType": "BID_REQUIREMENTS",
+          "text_length": 11511,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "См. документацию",
+            "fz": "44-ФЗ",
+            "region": "Не указано"
+          }
+        }
+      },
+      "extracted_data": {
+        "nmck": "Не найдено",
+        "industry": "REAL_ESTATE",
+        "has_inspection": false,
+        "has_smeta": true,
+        "has_contract": false
+      }
+    },
+    "20": {
+      "tender_id": "20",
+      "industry": "IT",
+      "files_count": 7,
+      "documents": {
+        "I. ИНСТРУКЦИЯ УЧАСТНИКАМ.docx": {
+          "filename": "I. ИНСТРУКЦИЯ УЧАСТНИКАМ.docx",
+          "docType": "GUARANTEES_AND_SECURITY",
+          "text_length": 69310,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "05.04.2013",
+            "fz": "44-ФЗ",
+            "region": "г. Николаевск"
+          }
+        },
+        "II. ИНФОРМАЦИОННАЯ КАРТА.docx": {
+          "filename": "II. ИНФОРМАЦИОННАЯ КАРТА.docx",
+          "docType": "DRAFT_CONTRACT",
+          "text_length": 9978,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "См. документацию",
+            "fz": "44-ФЗ",
+            "region": "Не указано"
+          },
+          "contractRiskSummary": {
+            "rnpMentioned": false
+          }
+        },
+        "III. ТЕХНИЧЕСКАЯ ЧАСТЬ.docx": {
+          "filename": "III. ТЕХНИЧЕСКАЯ ЧАСТЬ.docx",
+          "docType": "TECH_SPEC_OBJECT",
+          "text_length": 89317,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "См. документацию",
+            "fz": "Не указано",
+            "region": "Не указано"
+          }
+        },
+        "V. ПРОЕКТ КОНТРАКТА.docx": {
+          "filename": "V. ПРОЕКТ КОНТРАКТА.docx",
+          "docType": "DRAFT_CONTRACT",
+          "text_length": 70555,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "См. документацию",
+            "fz": "44-ФЗ",
+            "region": "Не указано"
+          },
+          "contractRiskSummary": {
+            "unilateralTerminationCustomer": true,
+            "unilateralTerminationSupplier": true,
+            "unilateralTerminationExamples": [
+              "х Работ с привлечением экспертов, экспертных организаций до принятия решения об одностороннем отказе от исполнения контракта. \n\n\t4.2. Заказчик обязан:\n\n\t4.2.1. Передать Подрядчику по Акту приёма-передачи уч",
+              "Контракт может быть расторгнут по соглашению Сторон, по решению суда, в случае одностороннего отказа Стороны контракта от исполнения контракта в соответствии с гражданским законодательством Российской Федерации.\n\n\t14.2. Заказчик вправе принять решение об одностороннем отказе от исполнения к",
+              "онодательством Российской Федерации.\n\n\t14.2. Заказчик вправе принять решение об одностороннем отказе от исполнения контракта в следующих случаях:\n\n14.2.1. В случае просрочки выполнения Работ более чем на 10 (десять) рабочих д"
+            ],
+            "rnpMentioned": false
+          }
+        }
+      },
+      "extracted_data": {
+        "nmck": "Не найдено",
+        "industry": "IT",
+        "has_inspection": false,
+        "has_smeta": false,
+        "has_contract": true
+      }
+    },
+    "21": {
+      "tender_id": "21",
+      "industry": "IT",
+      "files_count": 5,
+      "documents": {
+        "Информационная карта.docx": {
+          "filename": "Информационная карта.docx",
+          "docType": "TECH_SPEC_OBJECT",
+          "text_length": 35657,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "01.06.2023",
+            "fz": "44-ФЗ",
+            "region": "г.\n\n\n\nГосударственное"
+          }
+        },
+        "Приложение 1. ООЗ.docx": {
+          "filename": "Приложение 1. ООЗ.docx",
+          "docType": "TECH_SPEC_OBJECT",
+          "text_length": 2751,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "См. документацию",
+            "fz": "44-ФЗ",
+            "region": "Не указано"
+          }
+        },
+        "Приложение 2. ОНМЦК.xlsx": {
+          "filename": "Приложение 2. ОНМЦК.xlsx",
+          "docType": "ONMCK_JUSTIFICATION",
+          "text_length": 1884,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "24.10.2025",
+            "fz": "Не указано",
+            "region": "г. Якутске"
+          },
+          "smetaSummary": {
+            "totalAmountNumeric": 38862011.760000005,
+            "totalAmount": "38862011.760000005",
+            "hasVAT": false
+          }
+        },
+        "Приложение 3. Требования к содержанию и составу заявки на участие в закупке.docx": {
+          "filename": "Приложение 3. Требования к содержанию и составу заявки на участие в закупке.docx",
+          "docType": "BID_REQUIREMENTS",
+          "text_length": 72385,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "19.06.2025",
+            "fz": "44-ФЗ",
+            "region": "г.\n\nПриложение"
+          }
+        },
+        "Приложение 4. Проект контракта.docx": {
+          "filename": "Приложение 4. Проект контракта.docx",
+          "docType": "DRAFT_CONTRACT",
+          "text_length": 77278,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "30.12.2004",
+            "fz": "44-ФЗ",
+            "region": "г. Якутске"
+          },
+          "contractRiskSummary": {
+            "penaltyDailyMaxPercent": 10.0,
+            "rnpMentioned": false
+          }
+        }
+      },
+      "extracted_data": {
+        "nmck": "Не найдено",
+        "industry": "IT",
+        "has_inspection": false,
+        "has_smeta": true,
+        "has_contract": true
+      }
+    },
+    "22": {
+      "tender_id": "22",
+      "industry": "ENGINEERING",
+      "files_count": 7,
+      "documents": {
+        "извещ-е_докум-я (модернизация ИТС КОПЗ).docx": {
+          "filename": "извещ-е_докум-я (модернизация ИТС КОПЗ).docx",
+          "docType": "DRAFT_CONTRACT",
+          "text_length": 63608,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "См. документацию",
+            "fz": "44-ФЗ",
+            "region": "г. Хабаровск"
+          },
+          "contractRiskSummary": {
+            "rnpMentioned": true
+          }
+        },
+        "ЛСР 09-01-01 РД АПС, АПТ и СОУЭ Хабаровск «ТЗК-АЭРО» монтаж.xlsx": {
+          "filename": "ЛСР 09-01-01 РД АПС, АПТ и СОУЭ Хабаровск «ТЗК-АЭРО» монтаж.xlsx",
+          "docType": "TECH_SPEC_OBJECT",
+          "text_length": 190887,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "26.07.2022",
+            "fz": "Не указано",
+            "region": "г.\nНаименование"
+          }
+        },
+        "ЛСР 09-01-02 РД АПС, АПТ и СОУЭ Хабаровск «ТЗК-АЭРО» ПНР.xlsx": {
+          "filename": "ЛСР 09-01-02 РД АПС, АПТ и СОУЭ Хабаровск «ТЗК-АЭРО» ПНР.xlsx",
+          "docType": "TECH_SPEC_OBJECT",
+          "text_length": 17440,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "26.07.2022",
+            "fz": "Не указано",
+            "region": "г.\nНаименование"
+          }
+        },
+        "проект договора (модернизация ИТС КОПЗ).docx": {
+          "filename": "проект договора (модернизация ИТС КОПЗ).docx",
+          "docType": "SMETA_LOCAL",
+          "text_length": 72759,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "18.07.2011",
+            "fz": "44-ФЗ",
+            "region": "г. Хабаровск, Матвеевское шоссе, д. 49В."
+          },
+          "smetaSummary": {
+            "hasVAT": true
+          }
+        },
+        "РД АПС, АПТ и СОУЭ Хабаровск «ТЗК-АЭРО».pdf": {
+          "filename": "РД АПС, АПТ и СОУЭ Хабаровск «ТЗК-АЭРО».pdf",
+          "docType": "TECH_SPEC_OBJECT",
+          "text_length": 146814,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "См. документацию",
+            "fz": "Не указано",
+            "region": "г. Иркутск"
+          }
+        },
+        "ССР РД АПС, АПТ и СОУЭ Хабаровск «ТЗК-АЭРО».xlsx": {
+          "filename": "ССР РД АПС, АПТ и СОУЭ Хабаровск «ТЗК-АЭРО».xlsx",
+          "docType": "TECH_SPEC_OBJECT",
+          "text_length": 3977,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "См. документацию",
+            "fz": "Не указано",
+            "region": "Не указано"
+          }
+        },
+        "ТЗ (модернизация ИТС КОПЗ).docx": {
+          "filename": "ТЗ (модернизация ИТС КОПЗ).docx",
+          "docType": "TECH_SPEC_OBJECT",
+          "text_length": 30551,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "22.07.2008",
+            "fz": "44-ФЗ",
+            "region": "Россия, г. Хабаровск, Матвеевское шоссе, 49 В. ООО «ТЗК-АЭРО»"
+          }
+        }
+      },
+      "extracted_data": {
+        "nmck": "Не найдено",
+        "industry": "ENGINEERING",
+        "has_inspection": false,
+        "has_smeta": true,
+        "has_contract": true
+      }
+    },
+    "23": {
+      "tender_id": "23",
+      "industry": "REAL_ESTATE",
+      "files_count": 5,
+      "documents": {
+        "Обоснование НМЦК.docx": {
+          "filename": "Обоснование НМЦК.docx",
+          "docType": "ONMCK_JUSTIFICATION",
+          "text_length": 2656,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "26.12.2025",
+            "fz": "Не указано",
+            "region": "г.\n\n\n\nНа"
+          },
+          "smetaSummary": {
+            "hasVAT": false
+          }
+        }
+      },
+      "extracted_data": {
+        "nmck": "Не найдено",
+        "industry": "REAL_ESTATE",
+        "has_inspection": false,
+        "has_smeta": true,
+        "has_contract": false
+      }
+    },
+    "24": {
+      "tender_id": "24",
+      "industry": "REAL_ESTATE",
+      "files_count": 4,
+      "documents": {
+        "Приложение №1 Обоснование НМЦК.docx": {
+          "filename": "Приложение №1 Обоснование НМЦК.docx",
+          "docType": "ONMCK_JUSTIFICATION",
+          "text_length": 4125,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "18.09.2025",
+            "fz": "Не указано",
+            "region": "г.\n\nПоставщик"
+          },
+          "smetaSummary": {
+            "hasVAT": false
+          }
+        },
+        "приложение №2 Проект контракта.docx": {
+          "filename": "приложение №2 Проект контракта.docx",
+          "docType": "DRAFT_CONTRACT",
+          "text_length": 63720,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "05.04.2013",
+            "fz": "44-ФЗ",
+            "region": "г. Орёл"
+          },
+          "contractRiskSummary": {
+            "unilateralTerminationCustomer": true,
+            "unilateralTerminationSupplier": true,
+            "unilateralTerminationExamples": [
+              "иях, предусмотренных настоящим Контрактом.\n\n4.1.4. В случае принятия решения об одностороннем отказе от исполнения настоящего Контракта не позднее чем в течение 3 (трех) рабочих дней с даты принятия указанного решения направить Заказчику такое решение по почте заказным письмом с уведомлением о вручении по адресу Заказчика, указан",
+              "образом поставленного и принятого Заказчиком Товара.\n\n4.2.3. Принять решение об одностороннем отказе от исполнения настоящего Контракта в соответствии с гражданским законодательством Российской Федерации.\n\n4.2.4. Требовать возмещения убытков, уплаты неустоек (штрафов, пеней) в соотве",
+              "рядке и сроки, предусмотренные настоящим Контрактом.\n\n4.3.2. Принять решение об одностороннем отказе от исполнения настоящего Контракта в случае, если в ходе исполнения настоящего Контракта установлено, что Поставщик и (или) поставляемый Товар не соответствует установленным извещением об осуществлении закупки и (или) документацие"
+            ],
+            "rnpMentioned": true
+          }
+        },
+        "Приложение №3 Описание объекта закупки.docx": {
+          "filename": "Приложение №3 Описание объекта закупки.docx",
+          "docType": "TECH_SPEC_OBJECT",
+          "text_length": 9015,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "См. документацию",
+            "fz": "Не указано",
+            "region": "г.\n\nТребования"
+          }
+        },
+        "Приложение №4 Требования к содержанию и составу заявки.docx": {
+          "filename": "Приложение №4 Требования к содержанию и составу заявки.docx",
+          "docType": "BID_REQUIREMENTS",
+          "text_length": 38838,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "05.04.2013",
+            "fz": "44-ФЗ",
+            "region": "Не указано"
+          }
+        }
+      },
+      "extracted_data": {
+        "nmck": "Не найдено",
+        "industry": "REAL_ESTATE",
+        "has_inspection": false,
+        "has_smeta": true,
+        "has_contract": true
+      }
+    },
+    "25": {
+      "tender_id": "25",
+      "industry": "IT",
+      "files_count": 6,
+      "documents": {
+        "Извещение.docx": {
+          "filename": "Извещение.docx",
+          "docType": "DRAFT_CONTRACT",
+          "text_length": 39259,
+          "passport": {
+            "nmck": "15 790 595,00 ₽",
+            "deadlineApp": "12.04.2010",
+            "fz": "44-ФЗ",
+            "region": "товара, выполнения работ, оказания услуг."
+          },
+          "contractRiskSummary": {
+            "rnpMentioned": false
+          }
+        },
+        "Часть_1._Информационная_карта.docx": {
+          "filename": "Часть_1._Информационная_карта.docx",
+          "docType": "ONMCK_JUSTIFICATION",
+          "text_length": 53350,
+          "passport": {
+            "nmck": "15 790 595,00 ₽",
+            "deadlineApp": "08.12.2025",
+            "fz": "44-ФЗ",
+            "region": "Не указано"
+          },
+          "smetaSummary": {
+            "totalAmountNumeric": 15790595.0,
+            "totalAmount": "15 790 595,00",
+            "hasVAT": true
+          }
+        },
+        "Часть_2._Требования_к_содержанию,_форме,_оформлению_и_составу_заявки_на_участие_в_закупке.docx": {
+          "filename": "Часть_2._Требования_к_содержанию,_форме,_оформлению_и_составу_заявки_на_участие_в_закупке.docx",
+          "docType": "DRAFT_CONTRACT",
+          "text_length": 55814,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "01.01.2025",
+            "fz": "223-ФЗ",
+            "region": "Не указано"
+          },
+          "contractRiskSummary": {
+            "rnpMentioned": false
+          }
+        },
+        "Часть_3._Описание_предмета_закупки.docx": {
+          "filename": "Часть_3._Описание_предмета_закупки.docx",
+          "docType": "GENERIC",
+          "text_length": 3326,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "12.04.2010",
+            "fz": "Не указано",
+            "region": "г.\n\n\n\nЧасть"
+          }
+        },
+        "Часть_4._ОНМЦД.xlsx": {
+          "filename": "Часть_4._ОНМЦД.xlsx",
+          "docType": "ONMCK_JUSTIFICATION",
+          "text_length": 1095,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "05.11.2025",
+            "fz": "Не указано",
+            "region": "Не указано"
+          },
+          "smetaSummary": {
+            "totalAmountNumeric": 66700.0,
+            "totalAmount": "66700 ",
+            "hasVAT": false
+          }
+        },
+        "Часть_5._Проект_договора.docx": {
+          "filename": "Часть_5._Проект_договора.docx",
+          "docType": "DRAFT_CONTRACT",
+          "text_length": 25029,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "18.07.2011",
+            "fz": "223-ФЗ",
+            "region": "г. Якутск"
+          },
+          "contractRiskSummary": {
+            "penaltyDailyMaxPercent": 10.0,
+            "unilateralTerminationCustomer": true,
+            "unilateralTerminationSupplier": true,
+            "unilateralTerminationExamples": [
+              "е 30 (тридцати) рабочих дней, то каждая Сторона вправе отказаться от Договора в одностороннем порядке.\n\n\n\n7. СРОК ДЕЙСТВИЯ, ИЗМЕНЕНИЕ\n\nИ ДОСРОЧНОЕ РАСТОРЖЕНИЕ ДОГОВОРА\n\n7.1. Договор",
+              "ством РФ и настоящим договором.\n\n7.5. Поставщик может воспользоваться правом на односторонний отказ от исполнения Договора в случае, если Заказчик неоднократно нарушает срок оплаты.\n\n7.6. Заказчик может воспользоваться правом на односторонний отказ от исполнени",
+              "однократно нарушает срок оплаты.\n\n7.6. Заказчик может воспользоваться правом на односторонний отказ от исполнения Договора в случаях, если:\n\n- в ходе исполнения договора установлено, что поставщик и (или) поставляемый т"
+            ],
+            "rnpMentioned": false
+          }
+        }
+      },
+      "extracted_data": {
+        "nmck": "15 790 595,00 ₽",
+        "industry": "IT",
+        "has_inspection": false,
+        "has_smeta": true,
+        "has_contract": true
+      }
+    },
+    "26": {
+      "tender_id": "26",
+      "industry": "ENGINEERING",
+      "files_count": 4,
+      "documents": {
+        "ОПЗ.docx": {
+          "filename": "ОПЗ.docx",
+          "docType": "GENERIC",
+          "text_length": 3864,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "См. документацию",
+            "fz": "Не указано",
+            "region": "г. Якутск"
+          }
+        },
+        "ПРОЕКТ ДОГОВОРА.docx": {
+          "filename": "ПРОЕКТ ДОГОВОРА.docx",
+          "docType": "DRAFT_CONTRACT",
+          "text_length": 21102,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "18.07.2011",
+            "fz": "223-ФЗ",
+            "region": "г. Якутск"
+          },
+          "contractRiskSummary": {
+            "penaltyDailyMaxPercent": 10.0,
+            "unilateralTerminationCustomer": true,
+            "unilateralTerminationSupplier": true,
+            "unilateralTerminationExamples": [
+              "е 30 (тридцати) рабочих дней, то каждая Сторона вправе отказаться от Договора в одностороннем порядке.\n\n\n\n\n\n7. СРОК ДЕЙСТВИЯ, ИЗМЕНЕНИЕ И ДОСРОЧНОЕ РАСТОРЖЕНИЕ ДОГОВОРА\n\n\n\n7.1. Догов",
+              "ством РФ и настоящим договором.\n\n7.5. Поставщик может воспользоваться правом на односторонний отказ от исполнения Договора в случае, если Заказчик неоднократно нарушает срок оплаты.\n\n7.6. Заказчик может воспользоваться правом на односторонний отказ от исполнени",
+              "однократно нарушает срок оплаты.\n\n7.6. Заказчик может воспользоваться правом на односторонний отказ от исполнения Договора в случаях, если:\n\n- в ходе исполнения договора установлено, что поставщик и (или) поставляемый т"
+            ],
+            "rnpMentioned": false
+          }
+        },
+        "Форма предложения.docx": {
+          "filename": "Форма предложения.docx",
+          "docType": "NOTICE",
+          "text_length": 3091,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "См. документацию",
+            "fz": "Не указано",
+            "region": "Не указано"
+          }
+        }
+      },
+      "extracted_data": {
+        "nmck": "Не найдено",
+        "industry": "ENGINEERING",
+        "has_inspection": false,
+        "has_smeta": false,
+        "has_contract": true
+      }
+    },
+    "27": {
+      "tender_id": "27",
+      "industry": "ENGINEERING",
+      "files_count": 4,
+      "documents": {
+        "ОПЗ.docx": {
+          "filename": "ОПЗ.docx",
+          "docType": "GENERIC",
+          "text_length": 6621,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "См. документацию",
+            "fz": "Не указано",
+            "region": "Не указано"
+          }
+        },
+        "ПРОЕКТ ДОГОВОРА.docx": {
+          "filename": "ПРОЕКТ ДОГОВОРА.docx",
+          "docType": "DRAFT_CONTRACT",
+          "text_length": 21209,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "18.07.2011",
+            "fz": "223-ФЗ",
+            "region": "г. Якутск"
+          },
+          "contractRiskSummary": {
+            "penaltyDailyMaxPercent": 10.0,
+            "unilateralTerminationCustomer": true,
+            "unilateralTerminationSupplier": true,
+            "unilateralTerminationExamples": [
+              "е 30 (тридцати) рабочих дней, то каждая Сторона вправе отказаться от Договора в одностороннем порядке.\n\n\n\n\n\n7. СРОК ДЕЙСТВИЯ, ИЗМЕНЕНИЕ И ДОСРОЧНОЕ РАСТОРЖЕНИЕ ДОГОВОРА\n\n\n\n7.1. Догов",
+              "ством РФ и настоящим договором.\n\n7.5. Поставщик может воспользоваться правом на односторонний отказ от исполнения Договора в случае, если Заказчик неоднократно нарушает срок оплаты.\n\n7.6. Заказчик может воспользоваться правом на односторонний отказ от исполнени",
+              "однократно нарушает срок оплаты.\n\n7.6. Заказчик может воспользоваться правом на односторонний отказ от исполнения Договора в случаях, если:\n\n- в ходе исполнения договора установлено, что поставщик и (или) поставляемый т"
+            ],
+            "rnpMentioned": false
+          }
+        },
+        "Форма предложения.docx": {
+          "filename": "Форма предложения.docx",
+          "docType": "NOTICE",
+          "text_length": 3091,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "См. документацию",
+            "fz": "Не указано",
+            "region": "Не указано"
+          }
+        }
+      },
+      "extracted_data": {
+        "nmck": "Не найдено",
+        "industry": "ENGINEERING",
+        "has_inspection": false,
+        "has_smeta": false,
+        "has_contract": true
+      }
+    },
+    "28": {
+      "tender_id": "28",
+      "industry": "REAL_ESTATE",
+      "files_count": 4,
+      "documents": {
+        "Приложение № 1 Описание объекта закупки.docx": {
+          "filename": "Приложение № 1 Описание объекта закупки.docx",
+          "docType": "TECH_SPEC_OBJECT",
+          "text_length": 8743,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "28.01.2021",
+            "fz": "Не указано",
+            "region": "Не указано"
+          }
+        },
+        "Приложение № 2 Обоснование НМЦК.docx": {
+          "filename": "Приложение № 2 Обоснование НМЦК.docx",
+          "docType": "ONMCK_JUSTIFICATION",
+          "text_length": 5612,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "05.04.2013",
+            "fz": "44-ФЗ",
+            "region": "г.\n\nФинансовое"
+          },
+          "smetaSummary": {
+            "hasVAT": false
+          }
+        },
+        "Приложение № 3 Проект контракта Хранение.docx": {
+          "filename": "Приложение № 3 Проект контракта Хранение.docx",
+          "docType": "DRAFT_CONTRACT",
+          "text_length": 42623,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "См. документацию",
+            "fz": "44-ФЗ",
+            "region": "3.1. Начало оказания Услуг: с 01 января 2026 года по 31 декабря 2026 года (включительно)."
+          },
+          "contractRiskSummary": {
+            "unilateralTerminationCustomer": true,
+            "unilateralTerminationSupplier": false,
+            "unilateralTerminationExamples": [
+              "жение Контракта допускается по соглашению Сторон, по решению суда или в связи с односторонним отказом Стороны Контракта от исполнения Контракта в соответствии с гражданским законодательством. При этом, факт подписания Сторонами соглашения о расторжении Контракта не освобождает Стороны от обязанности урегулирования взаимных расчёт",
+              "сти урегулирования взаимных расчётов. \n\n10.3. Стороны вправе принять решение об одностороннем отказе от исполнения контракта по основаниям, предусмотренным Гражданским кодексом РФ для одностороннего отказа от исполнения отдельных видов обязательств. \n\n10.4. Заказчик вправе провести экспертизу оказанной Услуги с привлечением эксп",
+              "Услуги с привлечением экспертов, экспертных организаций до принятия решения об одностороннем отказе от исполнения Контракта в соответствии с частью 8 статьи 95 Федерального закона от 05.04.2013 № 44-ФЗ «О контрактной системе в сфере закупок товаров, работ, услуг для обеспечения государственных и муниципальных нужд».\n\nЕсли Заказч"
+            ],
+            "rnpMentioned": false
+          }
+        },
+        "Приложение № 4 Требования к содержанию, составу заявки на участие в закупке.docx": {
+          "filename": "Приложение № 4 Требования к содержанию, составу заявки на участие в закупке.docx",
+          "docType": "BID_REQUIREMENTS",
+          "text_length": 8530,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "См. документацию",
+            "fz": "44-ФЗ",
+            "region": "Не указано"
+          }
+        }
+      },
+      "extracted_data": {
+        "nmck": "Не найдено",
+        "industry": "REAL_ESTATE",
+        "has_inspection": false,
+        "has_smeta": true,
+        "has_contract": true
+      }
+    },
+    "29": {
+      "tender_id": "29",
+      "industry": "REAL_ESTATE",
+      "files_count": 5,
+      "documents": {
+        "Извещение.docx": {
+          "filename": "Извещение.docx",
+          "docType": "NOTICE",
+          "text_length": 11337,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "08.02.2017",
+            "fz": "44-ФЗ",
+            "region": "Не указано"
+          }
+        },
+        "Приложение 1. Обоснование НМЦК.docx": {
+          "filename": "Приложение 1. Обоснование НМЦК.docx",
+          "docType": "ONMCK_JUSTIFICATION",
+          "text_length": 1601,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "10.12.2024",
+            "fz": "Не указано",
+            "region": "Не указано"
+          },
+          "smetaSummary": {
+            "hasVAT": false
+          }
+        },
+        "Приложение №2 Проект контракта.docx": {
+          "filename": "Приложение №2 Проект контракта.docx",
+          "docType": "DRAFT_CONTRACT",
+          "text_length": 32042,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "01.01.2026",
+            "fz": "44-ФЗ",
+            "region": "в соответствии с Техническим заданием (Приложение № 1 к настоящему Контракту)"
+          },
+          "contractRiskSummary": {
+            "unilateralTerminationCustomer": true,
+            "unilateralTerminationSupplier": true,
+            "unilateralTerminationExamples": [
+              "трактом, переходят к новому заказчику.\n\n5.2.  Досрочное расторжение контракта с односторонним отказом:\n\n\t В случае расторжения контракта в связи с односторонним отказом Заказчика от",
+              "контракта с односторонним отказом:\n\n\t В случае расторжения контракта в связи с односторонним отказом Заказчика от исполнения контракта Заказчик вправе осуществить закупку услуг, которые являются предметом расторгнутого контракта, в соответствии с положениями части 23 статьи 95 Федерального закона №44-ФЗ.\n\n\tЕсли до расторжения до",
+              "порционально количеству исполненных услуг.\n\n\tЗаказчик вправе принять решение об одностороннем отказе от исполнения контракта в соответствии с гражданским законодательством и п.п.8-25 ст.95 44-ФЗ, что предусмотрено Контрактом в следующих случаях:\n\n\t\tОтказ Исполнителя от выполнения услуг;\n\n\t\tСущественное нарушение Исполнителе"
+            ],
+            "rnpMentioned": true
+          }
+        },
+        "Приложение №4 - Требования к содержанию, составу заявки, инструкция по ее заполнению.docx": {
+          "filename": "Приложение №4 - Требования к содержанию, составу заявки, инструкция по ее заполнению.docx",
+          "docType": "DRAFT_CONTRACT",
+          "text_length": 3643,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "См. документацию",
+            "fz": "Не указано",
+            "region": "Не указано"
+          },
+          "contractRiskSummary": {
+            "rnpMentioned": false
+          }
+        }
+      },
+      "extracted_data": {
+        "nmck": "Не найдено",
+        "industry": "REAL_ESTATE",
+        "has_inspection": false,
+        "has_smeta": true,
+        "has_contract": true
+      }
+    },
+    "tender 10 it consultant": {
+      "tender_id": "tender 10 it consultant",
+      "industry": "IT",
+      "files_count": 5,
+      "documents": {
+        "Извещение  запроса котировок в электронной форме.docx": {
+          "filename": "Извещение  запроса котировок в электронной форме.docx",
+          "docType": "ONMCK_JUSTIFICATION",
+          "text_length": 38420,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "См. документацию",
+            "fz": "44-ФЗ",
+            "region": "Здание учебно-тренировочного комплекса с плавательным бассейном, расположенное по адресу: Камчатский край, г. Петропавловск-Камчатский, Проспект Победы, д.6"
+          },
+          "smetaSummary": {
+            "hasVAT": false
+          }
+        },
+        "Приложение 1. Техническое задание.docx": {
+          "filename": "Приложение 1. Техническое задание.docx",
+          "docType": "TECH_SPEC_OBJECT",
+          "text_length": 10505,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "См. документацию",
+            "fz": "Не указано",
+            "region": "Не указано"
+          }
+        },
+        "Приложение 2. Рекомендуемые формы.docx": {
+          "filename": "Приложение 2. Рекомендуемые формы.docx",
+          "docType": "DRAFT_CONTRACT",
+          "text_length": 2194,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "См. документацию",
+            "fz": "Не указано",
+            "region": "Не указано"
+          },
+          "contractRiskSummary": {
+            "rnpMentioned": false
+          }
+        },
+        "Приложение 3. Проект договора.docx": {
+          "filename": "Приложение 3. Проект договора.docx",
+          "docType": "TECH_SPEC_OBJECT",
+          "text_length": 38111,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "18.07.2011",
+            "fz": "223-ФЗ",
+            "region": "г. Петропавловск"
+          }
+        },
+        "Приложение 4. Обоснование НМЦД.docx": {
+          "filename": "Приложение 4. Обоснование НМЦД.docx",
+          "docType": "ONMCK_JUSTIFICATION",
+          "text_length": 1500,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "17.11.2025",
+            "fz": "Не указано",
+            "region": "Не указано"
+          },
+          "smetaSummary": {
+            "hasVAT": false
+          }
+        }
+      },
+      "extracted_data": {
+        "nmck": "Не найдено",
+        "industry": "IT",
+        "has_inspection": false,
+        "has_smeta": true,
+        "has_contract": true
+      }
+    },
+    "tender 12 ovoshi": {
+      "tender_id": "tender 12 ovoshi",
+      "industry": "ENGINEERING",
+      "files_count": 5,
+      "documents": {
+        "Приложение 1. Техническое задание фрукты.docx": {
+          "filename": "Приложение 1. Техническое задание фрукты.docx",
+          "docType": "TECH_SPEC_OBJECT",
+          "text_length": 4813,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "См. документацию",
+            "fz": "Не указано",
+            "region": "Не указано"
+          }
+        },
+        "Приложение 2. Рекомендуемые формы.docx": {
+          "filename": "Приложение 2. Рекомендуемые формы.docx",
+          "docType": "NOTICE",
+          "text_length": 7250,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "См. документацию",
+            "fz": "44-ФЗ",
+            "region": "Не указано"
+          }
+        },
+        "Приложение 4. Обоснование НМЦД.docx": {
+          "filename": "Приложение 4. Обоснование НМЦД.docx",
+          "docType": "ONMCK_JUSTIFICATION",
+          "text_length": 2393,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "01.10.2025",
+            "fz": "Не указано",
+            "region": "Не указано"
+          },
+          "smetaSummary": {
+            "hasVAT": false
+          }
+        }
+      },
+      "extracted_data": {
+        "nmck": "Не найдено",
+        "industry": "ENGINEERING",
+        "has_inspection": false,
+        "has_smeta": true,
+        "has_contract": false
+      }
+    },
+    "tender 2 nedvijkka": {
+      "tender_id": "tender 2 nedvijkka",
+      "industry": "REAL_ESTATE",
+      "files_count": 4,
+      "documents": {
+        "ЭД №1. Описание объекта закупки (Техническое задание).docx": {
+          "filename": "ЭД №1. Описание объекта закупки (Техническое задание).docx",
+          "docType": "INSPECTION_REPORT",
+          "text_length": 5250,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "31-01-2003",
+            "fz": "Не указано",
+            "region": "город Якутск"
+          },
+          "inspectionSummary": {
+            "condition": "аварийное",
+            "recommendedWorkKind": "капитальный ремонт",
+            "normativeRefs": [
+              "ствующим нормам, правилам и стандартам (ГОСТ, СНиП, ТУ, СанПиН и т.д.), экологически",
+              "им нормам, правилам и стандартам (ГОСТ, СНиП, ТУ, СанПиН и т.д.), экологическим и са",
+              "домом и жилого дома садовым домом\";\n\n\t−\tСП 60.13330.2020 СНиП 41-01-2003 \"Отопление, вентил",
+              "ма садовым домом\";\n\n\t−\tСП 60.13330.2020 СНиП 41-01-2003 \"Отопление, вентиляция и кон",
+              "н от 30 декабря 2009 г. N 384-ФЗ);\n\n\t−\t\"ГОСТ Р 51617-2014. Национальный стандарт Рос",
+              "е требования\".\n\n\t- Объект соответствует СП 54.13330.2022 «СНиП 31-01-2003 Здания жилые мног",
+              "Объект соответствует СП 54.13330.2022 «СНиП 31-01-2003 Здания жилые многоквартирные"
+            ]
+          }
+        },
+        "ЭД №3. Проект муниципального контракта.docx": {
+          "filename": "ЭД №3. Проект муниципального контракта.docx",
+          "docType": "DRAFT_CONTRACT",
+          "text_length": 73281,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "30.12.2004",
+            "fz": "44-ФЗ",
+            "region": "город Якутск"
+          },
+          "contractRiskSummary": {
+            "penaltyDailyMaxPercent": 10.0,
+            "rnpMentioned": false
+          }
+        },
+        "ЭД №4. Требования к содержанию составу заявки инструкция по ее заполнению.docx": {
+          "filename": "ЭД №4. Требования к содержанию составу заявки инструкция по ее заполнению.docx",
+          "docType": "BID_REQUIREMENTS",
+          "text_length": 12439,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "См. документацию",
+            "fz": "44-ФЗ",
+            "region": "Не указано"
+          }
+        }
+      },
+      "extracted_data": {
+        "nmck": "Не найдено",
+        "industry": "REAL_ESTATE",
+        "has_inspection": true,
+        "has_smeta": false,
+        "has_contract": true
+      }
+    },
+    "tender 3 injiniring": {
+      "tender_id": "tender 3 injiniring",
+      "industry": "ENGINEERING",
+      "files_count": 8,
+      "documents": {
+        "Извещение.docx": {
+          "filename": "Извещение.docx",
+          "docType": "TECH_SPEC_OBJECT",
+          "text_length": 30513,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "29.12.2012",
+            "fz": "44-ФЗ",
+            "region": "- Выполнение инженерных изысканий: работы выполняются по месту нахождения объекта: Чукотский автономный округ, муниципальный округ Эгвекинот, с. Конергино."
+          }
+        },
+        "Приложение - Ситуационный план.pdf": {
+          "filename": "Приложение - Ситуационный план.pdf",
+          "docType": "IT_SPEC",
+          "text_length": 200,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "См. документацию",
+            "fz": "Не указано",
+            "region": "Не указано"
+          }
+        },
+        "Приложение №1. Описание объекта закупки.docx": {
+          "filename": "Приложение №1. Описание объекта закупки.docx",
+          "docType": "TECH_SPEC_OBJECT",
+          "text_length": 56443,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "20.02.2023",
+            "fz": "Не указано",
+            "region": "Не указано"
+          }
+        },
+        "Приложение №2. Обоснование НМЦК.pdf": {
+          "filename": "Приложение №2. Обоснование НМЦК.pdf",
+          "docType": "ONMCK_JUSTIFICATION",
+          "text_length": 3803,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "См. документацию",
+            "fz": "Не указано",
+            "region": "Не указано"
+          },
+          "smetaSummary": {
+            "hasVAT": false
+          }
+        },
+        "Приложение №3. Требования к заявке.docx": {
+          "filename": "Приложение №3. Требования к заявке.docx",
+          "docType": "DRAFT_CONTRACT",
+          "text_length": 13211,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "См. документацию",
+            "fz": "44-ФЗ",
+            "region": "Не указано"
+          },
+          "contractRiskSummary": {
+            "rnpMentioned": false
+          }
+        },
+        "Приложение №4. Порядок рассмотрения и оценки заявок.docx": {
+          "filename": "Приложение №4. Порядок рассмотрения и оценки заявок.docx",
+          "docType": "DRAFT_CONTRACT",
+          "text_length": 7836,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "20.12.2021",
+            "fz": "44-ФЗ",
+            "region": "Не указано"
+          },
+          "contractRiskSummary": {
+            "rnpMentioned": false
+          }
+        },
+        "Приложение №5. Проект контракта.docx": {
+          "filename": "Приложение №5. Проект контракта.docx",
+          "docType": "DRAFT_CONTRACT",
+          "text_length": 111273,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "См. документацию",
+            "fz": "44-ФЗ",
+            "region": "- Выполнение инженерных изысканий: работы выполняются по месту нахождения объекта: Чукотский автономный округ, муниципальный округ Эгвекинот, с. Конергино."
+          },
+          "contractRiskSummary": {
+            "unilateralTerminationCustomer": true,
+            "unilateralTerminationSupplier": true,
+            "unilateralTerminationExamples": [
+              "змещения неустойки и (или) убытков, причиненных по вине Подрядчика.\n\n\t\t3.2.5. В одностороннем порядке отказаться от исполнения Контракта в случаях и по основаниям, предусмотренным законодательством Российской Федерации. \n\n\t\t3.2.6. Досрочно принять и оплатить работы в соответствии с условиями Контрак",
+              "Контракта допускается по соглашению Сторон, на основании решения суда, в случае одностороннего отказа одной из Сторон от исполнения Контракта в случаях, когда такой отказ допускается в соответствии с законодательством Российской Федерации и условиями Контракта.\n\n10.7. Одностороннее расторжение Контракта осуществляется в порядке,",
+              "ветствии с законодательством Российской Федерации и условиями Контракта.\n\n10.7. Одностороннее расторжение Контракта осуществляется в порядке, установленном Федеральным законом № 44-ФЗ и гражданским законодательством.\n\n10.8. Подрядчик не вправе принять решение об одностороннем расторжении настоящ"
+            ],
+            "rnpMentioned": false
+          }
+        },
+        "Распоряжение № 374-ра от 26.11.2025.pdf": {
+          "filename": "Распоряжение № 374-ра от 26.11.2025.pdf",
+          "docType": "GENERIC",
+          "text_length": 5542,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "См. документацию",
+            "fz": "Не указано",
+            "region": "Не указано"
+          }
+        }
+      },
+      "extracted_data": {
+        "nmck": "Не найдено",
+        "industry": "ENGINEERING",
+        "has_inspection": false,
+        "has_smeta": true,
+        "has_contract": true
+      }
+    },
+    "tender 4 postavra": {
+      "tender_id": "tender 4 postavra",
+      "industry": "REAL_ESTATE",
+      "files_count": 5,
+      "documents": {
+        "151-25_3808059441_товары(п1152).docx": {
+          "filename": "151-25_3808059441_товары(п1152).docx",
+          "docType": "DRAFT_CONTRACT",
+          "text_length": 47714,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "19.02.2026",
+            "fz": "44-ФЗ",
+            "region": "товара, выполнения работы или оказания услуги"
+          },
+          "contractRiskSummary": {
+            "unilateralTerminationCustomer": true,
+            "unilateralTerminationSupplier": true,
+            "unilateralTerminationExamples": [
+              "подрядчика, исполнителя)\n\n\n\nПрочие условия контракта\n\nПредусмотрена возможность одностороннего отказа от исполнения контракта в соответствии со ст. 95 Закона № 44-ФЗ\n\nДа\n\nПредусмотрено уменьшение суммы, подлежащей уплате заказчиком поставщику (п",
+              "в соответствии с ней нормативных правовых актов;\n\nв случае принятия решения об одностороннем отказе от исполнения Контракта направить Заказчику такое решение в сроки и порядке, установленные статьей 95 Закона о контрактной системе;\n\nпредоставлять Заказчику по его требованию документы, относящиеся к предмету Ко",
+              "жащим образом поставленного и принятого Заказчиком Товара;\n\n принять решение об одностороннем отказе от исполнения Контракта в соответствии с гражданским законодательством Российской Федерации;\n\nтребовать возмещения убытков, уплаты неустоек (штрафов, пеней) в соответствии"
+            ],
+            "rnpMentioned": false,
+            "warrantyPeriod": "24 месяц"
+          }
+        },
+        "3.1 Расчет НМЦК 11.xlsx": {
+          "filename": "3.1 Расчет НМЦК 11.xlsx",
+          "docType": "GENERIC",
+          "text_length": 3433,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "02.10.2013",
+            "fz": "Не указано",
+            "region": "Не указано"
+          }
+        },
+        "ТЗ_Описание объекта закупки.docx": {
+          "filename": "ТЗ_Описание объекта закупки.docx",
+          "docType": "TECH_SPEC_OBJECT",
+          "text_length": 4682,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "См. документацию",
+            "fz": "Не указано",
+            "region": "г.\n\n\tПоставщик"
+          }
+        },
+        "Требования к содержанию составу заявки и инструкция по её заполнению (8).docx": {
+          "filename": "Требования к содержанию составу заявки и инструкция по её заполнению (8).docx",
+          "docType": "BID_REQUIREMENTS",
+          "text_length": 12599,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "См. документацию",
+            "fz": "44-ФЗ",
+            "region": "г. Информация"
+          }
+        },
+        "Часть 3 НМЦК.docx": {
+          "filename": "Часть 3 НМЦК.docx",
+          "docType": "ONMCK_JUSTIFICATION",
+          "text_length": 3782,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "23.10.2025",
+            "fz": "44-ФЗ",
+            "region": "Не указано"
+          },
+          "smetaSummary": {
+            "hasVAT": false
+          }
+        }
+      },
+      "extracted_data": {
+        "nmck": "Не найдено",
+        "industry": "REAL_ESTATE",
+        "has_inspection": false,
+        "has_smeta": true,
+        "has_contract": true
+      }
+    },
+    "tender 5 mebel": {
+      "tender_id": "tender 5 mebel",
+      "industry": "ENGINEERING",
+      "files_count": 9,
+      "documents": {
+        "Извещение о проведении закупки.docx.zip": {
+          "filename": "Извещение о проведении закупки.docx.zip",
+          "docType": "NOTICE",
+          "text_length": 113942,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "См. документацию",
+            "fz": "Не указано",
+            "region": "Не указано"
+          }
+        },
+        "Извещение о проведении запроса котировок.docx": {
+          "filename": "Извещение о проведении запроса котировок.docx",
+          "docType": "TECH_SPEC_OBJECT",
+          "text_length": 62761,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "24.07.2007",
+            "fz": "44-ФЗ",
+            "region": "товара, выполнения работы, оказания услуги: в соответствии с приложением 4 «Проект договора» к настоящему извещению о проведении запроса котировок."
+          }
+        },
+        "Л001 РНМЦК.xlsx.zip": {
+          "filename": "Л001 РНМЦК.xlsx.zip",
+          "docType": "GENERIC",
+          "text_length": 77840,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "См. документацию",
+            "fz": "Не указано",
+            "region": "Не указано"
+          }
+        },
+        "Описание объекта закупки (товары, работы, услуги)(расширенная).docx.zip": {
+          "filename": "Описание объекта закупки (товары, работы, услуги)(расширенная).docx.zip",
+          "docType": "TECH_SPEC_OBJECT",
+          "text_length": 113880,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "См. документацию",
+            "fz": "Не указано",
+            "region": "Не указано"
+          }
+        },
+        "Приложение № 3 к Извещению о проведении запроса котировок_Техническое задание.docx": {
+          "filename": "Приложение № 3 к Извещению о проведении запроса котировок_Техническое задание.docx",
+          "docType": "TECH_SPEC_OBJECT",
+          "text_length": 9216,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "18.07.2011",
+            "fz": "223-ФЗ",
+            "region": "Не указано"
+          }
+        },
+        "Приложение № 5 к Извещению_Обоснование НМЦД.xlsx": {
+          "filename": "Приложение № 5 к Извещению_Обоснование НМЦД.xlsx",
+          "docType": "ONMCK_JUSTIFICATION",
+          "text_length": 1962,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "См. документацию",
+            "fz": "Не указано",
+            "region": "Не указано"
+          },
+          "smetaSummary": {
+            "totalAmountNumeric": 6269736.0,
+            "totalAmount": "6269736 ",
+            "hasVAT": true
+          }
+        },
+        "Проект контракта Л001 мед.docx.zip": {
+          "filename": "Проект контракта Л001 мед.docx.zip",
+          "docType": "DRAFT_CONTRACT",
+          "text_length": 150302,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "См. документацию",
+            "fz": "Не указано",
+            "region": "Не указано"
+          },
+          "contractRiskSummary": {
+            "rnpMentioned": false
+          }
+        },
+        "Требования к заявке на участие в закупке и инструкция по её заполнению.docx.zip": {
+          "filename": "Требования к заявке на участие в закупке и инструкция по её заполнению.docx.zip",
+          "docType": "BID_REQUIREMENTS",
+          "text_length": 86581,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "См. документацию",
+            "fz": "Не указано",
+            "region": "Не указано"
+          }
+        }
+      },
+      "extracted_data": {
+        "nmck": "Не найдено",
+        "industry": "ENGINEERING",
+        "has_inspection": false,
+        "has_smeta": true,
+        "has_contract": true
+      }
+    },
+    "tender 7 oxrana": {
+      "tender_id": "tender 7 oxrana",
+      "industry": "REAL_ESTATE",
+      "files_count": 7,
+      "documents": {
+        "График поставки охрана.docx": {
+          "filename": "График поставки охрана.docx",
+          "docType": "GENERIC",
+          "text_length": 948,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "30.06.2026",
+            "fz": "Не указано",
+            "region": "Не указано"
+          }
+        },
+        "НМЦК Охрана до 31.05.26.docx": {
+          "filename": "НМЦК Охрана до 31.05.26.docx",
+          "docType": "ONMCK_JUSTIFICATION",
+          "text_length": 8106,
+          "passport": {
+            "nmck": "22 440,00 ₽",
+            "deadlineApp": "22.07.2008",
+            "fz": "44-ФЗ",
+            "region": "Не указано"
+          },
+          "smetaSummary": {
+            "totalAmountNumeric": 850236.94,
+            "totalAmount": "850 236,94",
+            "hasVAT": true
+          }
+        },
+        "охрана 2026 изм 1.docx": {
+          "filename": "охрана 2026 изм 1.docx",
+          "docType": "TECH_SPEC_OBJECT",
+          "text_length": 14531,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "31.05.2026",
+            "fz": "Не указано",
+            "region": "г. Владивосток"
+          }
+        },
+        "Порядок рассмотрения и оценки заявок на участие в конкурсе 9615656.docx": {
+          "filename": "Порядок рассмотрения и оценки заявок на участие в конкурсе 9615656.docx",
+          "docType": "GENERIC",
+          "text_length": 8238,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "См. документацию",
+            "fz": "44-ФЗ",
+            "region": "Не указано"
+          }
+        },
+        "Приложение к извещению.docx": {
+          "filename": "Приложение к извещению.docx",
+          "docType": "TECH_SPEC_OBJECT",
+          "text_length": 2666,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "27.12.2019",
+            "fz": "44-ФЗ",
+            "region": "Не указано"
+          }
+        },
+        "Проект контракта на оказание охранных услуг.docx": {
+          "filename": "Проект контракта на оказание охранных услуг.docx",
+          "docType": "DRAFT_CONTRACT",
+          "text_length": 39121,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "30.06.2026",
+            "fz": "44-ФЗ",
+            "region": "Приморский Край, г.о. Владивостокский, г Владивосток, ул Первая, д. 4А."
+          },
+          "contractRiskSummary": {
+            "unilateralTerminationCustomer": true,
+            "unilateralTerminationSupplier": true,
+            "unilateralTerminationExamples": [
+              "услуг для проверки его на соответствие условиям Контракта.\n\n\tПринять решение об одностороннем отказе от исполнения Контракта в случаях, установленных ч.15 ст.95 Федерального закона № 44-ФЗ.\n\n\t\n\n\t\tИсполнитель имеет право:\n\n\tТребовать своевременного подписания Заказчиком",
+              "телем, не вмешиваясь в его хозяйственную деятельность.\n\n\tДо принятия решения об одностороннем отказе от исполнения Контракта провести экспертизу оказанных услуг с привлечением экспертов, экспертных организаций на основании контрактов.\n\n\tОсуществлять иные права в соответствии с законодательными и иными нормативным",
+              "сторжение Контракта допускается по соглашению Сторон, по решению суда, в случае одностороннего отказа Стороны Контракта от исполнения Контракта в соответствии с гражданским законодательством Российской Федерации. Контрактом предусмотрена возможность одностороннего отказа от исполнения контракта в соответствии с положениями частей"
+            ],
+            "rnpMentioned": false
+          }
+        },
+        "Требования к содержанию и составу заявки на участие в закупке - две части.docx": {
+          "filename": "Требования к содержанию и составу заявки на участие в закупке - две части.docx",
+          "docType": "BID_REQUIREMENTS",
+          "text_length": 38119,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "03.05.2022",
+            "fz": "44-ФЗ",
+            "region": "Не указано"
+          }
+        }
+      },
+      "extracted_data": {
+        "nmck": "22 440,00 ₽",
+        "industry": "REAL_ESTATE",
+        "has_inspection": false,
+        "has_smeta": true,
+        "has_contract": true
+      }
+    },
+    "tender 8": {
+      "tender_id": "tender 8",
+      "industry": "REAL_ESTATE",
+      "files_count": 4,
+      "documents": {
+        "ПРИЛОЖЕНИЕ № 1 Описание объекта закупки 31245.docx": {
+          "filename": "ПРИЛОЖЕНИЕ № 1 Описание объекта закупки 31245.docx",
+          "docType": "TECH_SPEC_OBJECT",
+          "text_length": 27296,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "См. документацию",
+            "fz": "Не указано",
+            "region": "Не указано"
+          }
+        },
+        "ПРИЛОЖЕНИЕ № 2 Обоснование начальной (максимальной) цены котракта.docx": {
+          "filename": "ПРИЛОЖЕНИЕ № 2 Обоснование начальной (максимальной) цены котракта.docx",
+          "docType": "ONMCK_JUSTIFICATION",
+          "text_length": 7331,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "07.11.2025",
+            "fz": "44-ФЗ",
+            "region": "г.\n\nИсполнитель"
+          },
+          "smetaSummary": {
+            "hasVAT": false
+          }
+        },
+        "ПРИЛОЖЕНИЕ № 3 Требования к содержанию составу заявки на участие в закупке и инструкция по её заполнению.docx": {
+          "filename": "ПРИЛОЖЕНИЕ № 3 Требования к содержанию составу заявки на участие в закупке и инструкция по её заполнению.docx",
+          "docType": "BID_REQUIREMENTS",
+          "text_length": 10163,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "См. документацию",
+            "fz": "Не указано",
+            "region": "Не указано"
+          }
+        },
+        "ПРИЛОЖЕНИЕ № 4 Проект контракта 31245.docx": {
+          "filename": "ПРИЛОЖЕНИЕ № 4 Проект контракта 31245.docx",
+          "docType": "DRAFT_CONTRACT",
+          "text_length": 69041,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "30.12.2026",
+            "fz": "44-ФЗ",
+            "region": "г.\n\n\n\n\t\tЦена"
+          },
+          "contractRiskSummary": {
+            "unilateralTerminationCustomer": true,
+            "unilateralTerminationSupplier": true,
+            "unilateralTerminationExamples": [
+              "в связи с нарушением Исполнителем или заказчиком условий контракта, решения об одностороннем отказе от исполнения контракта, извещения об отмене такого решения без использования усиленных электронных подписей и единой информационной системы.\n\n\n\n6. Ответственность Сторон\n\n\n\n6.1. В случае просрочки исполнения Сторонами об",
+              "сторжение Контракта допускается по соглашению Сторон, по решению суда, в случае одностороннего отказа стороны Контракта от исполнения Контракта в соответствии с гражданским законодательством.\n\n8.8. Заказчик вправе принять решение об одностороннем отказе от исполнения Кон",
+              "ствии с гражданским законодательством.\n\n8.8. Заказчик вправе принять решение об одностороннем отказе от исполнения Контракта по основаниям, предусмотренным Гражданским кодексом Российской Федерации для одностороннего отказа от исполнения обязательств, предусмотренных Контрактом, в том числе, но не ограничиваясь, в случае отступле"
+            ],
+            "rnpMentioned": false
+          }
+        }
+      },
+      "extracted_data": {
+        "nmck": "Не найдено",
+        "industry": "REAL_ESTATE",
+        "has_inspection": false,
+        "has_smeta": true,
+        "has_contract": true
+      }
+    },
+    "tender 9": {
+      "tender_id": "tender 9",
+      "industry": "ENGINEERING",
+      "files_count": 4,
+      "documents": {
+        "Приложение № 1 описание объекта закупки.docx": {
+          "filename": "Приложение № 1 описание объекта закупки.docx",
+          "docType": "TECH_SPEC_OBJECT",
+          "text_length": 3723,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "14.04.2022",
+            "fz": "44-ФЗ",
+            "region": "г. Владивостока"
+          }
+        },
+        "Приложение № 2 к изв. обоснование НМЦК.docx": {
+          "filename": "Приложение № 2 к изв. обоснование НМЦК.docx",
+          "docType": "ONMCK_JUSTIFICATION",
+          "text_length": 3365,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "30.10.2025",
+            "fz": "Не указано",
+            "region": "г. Владивостока"
+          },
+          "smetaSummary": {
+            "hasVAT": false
+          }
+        },
+        "Приложение № 3 к изв. Требования к составу заявки Инструкция.docx": {
+          "filename": "Приложение № 3 к изв. Требования к составу заявки Инструкция.docx",
+          "docType": "BID_REQUIREMENTS",
+          "text_length": 22871,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "См. документацию",
+            "fz": "44-ФЗ",
+            "region": "г. Владивостока"
+          }
+        },
+        "Приложение № 4 к изв. Проект муниципального контракта.docx": {
+          "filename": "Приложение № 4 к изв. Проект муниципального контракта.docx",
+          "docType": "DRAFT_CONTRACT",
+          "text_length": 47383,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "12.01.2026",
+            "fz": "44-ФЗ",
+            "region": "по выбору исполнителя, в том числе по месту нахождения объекта недвижимости, находящегося в муниципальной собственности Владивостокского городского округа (Приложение № 2"
+          },
+          "contractRiskSummary": {
+            "unilateralTerminationCustomer": true,
+            "unilateralTerminationSupplier": true,
+            "unilateralTerminationExamples": [
+              "4.2013 № 44-ФЗ допускается  по соглашению Сторон, по решению суда или в связи с односторонним отказом стороны Контракта от исполнения Контракта в соответствии с гражданским законодательством.\n\n\tВ соответствии с положением ч. 9 ст. 95 Федерального закона от 05.04.2013 № 4",
+              "95 Федерального закона от 05.04.2013 № 44-ФЗ Заказчик вправе принять решение об одностороннем отказе от исполнения контракта по основаниям, предусмотренным Гражданским кодексом Российской Федерации для одностороннего отказа от исполнения отдельных видов обязательств.\n\n\t8.4. В случае принятия ЗАКАЗЧИКОМ решения об одностороннем от",
+              "ия отдельных видов обязательств.\n\n\t8.4. В случае принятия ЗАКАЗЧИКОМ решения об одностороннем отказе от исполнения контракта, ЗАКАЗЧИК, с использованием единой информационной системы, формирует решение об одностороннем отказе от исполнения контракта, подписывает его усиленной электронной подписью, размещает такое решение в единой"
+            ],
+            "rnpMentioned": false
+          }
+        }
+      },
+      "extracted_data": {
+        "nmck": "Не найдено",
+        "industry": "ENGINEERING",
+        "has_inspection": false,
+        "has_smeta": true,
+        "has_contract": true
+      }
+    },
+    "tender1 1 stroyka": {
+      "tender_id": "tender1 1 stroyka",
+      "industry": "CONSTRUCTION",
+      "files_count": 7,
+      "documents": {
+        "ДОГОВОР.docx": {
+          "filename": "ДОГОВОР.docx",
+          "docType": "SMETA_LOCAL",
+          "text_length": 8242,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "01.12.2025",
+            "fz": "44-ФЗ",
+            "region": "г.\n\n\n\n\n\nГлава"
+          },
+          "smetaSummary": {
+            "totalAmountNumeric": 23708983.54,
+            "totalAmount": "23708983,54",
+            "hasVAT": true
+          }
+        },
+        "Локальный сметный расчет.xlsx": {
+          "filename": "Локальный сметный расчет.xlsx",
+          "docType": "SMETA_LOCAL",
+          "text_length": 94379,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "02.09.2021",
+            "fz": "Не указано",
+            "region": "Не указано"
+          },
+          "smetaSummary": {
+            "totalAmountNumeric": 22013182.61,
+            "totalAmount": "22013182.61",
+            "hasVAT": true
+          }
+        },
+        "Описание объекта закупки мост.docx": {
+          "filename": "Описание объекта закупки мост.docx",
+          "docType": "TECH_SPEC_OBJECT",
+          "text_length": 28338,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "13.03.2025",
+            "fz": "Не указано",
+            "region": "Камчатский край, Пенжинский район, мост через р. Манила на территории Сельского поселения «Манилы»"
+          }
+        },
+        "ОТЧЕТ по осмотру моста р.Манилка с.Манилы Пенжинского района Камчатского края.pdf": {
+          "filename": "ОТЧЕТ по осмотру моста р.Манилка с.Манилы Пенжинского района Камчатского края.pdf",
+          "docType": "GENERIC",
+          "text_length": 11917,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "14.03.2025",
+            "fz": "Не указано",
+            "region": "г. \n              Мост"
+          }
+        },
+        "Порядок обеспечения.docx": {
+          "filename": "Порядок обеспечения.docx",
+          "docType": "DRAFT_CONTRACT",
+          "text_length": 6378,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "05.04.2013",
+            "fz": "44-ФЗ",
+            "region": "г. Петропавловск"
+          },
+          "contractRiskSummary": {
+            "rnpMentioned": false
+          },
+          "guarantee": "0,5%"
+        },
+        "Проект контракта мост.docx": {
+          "filename": "Проект контракта мост.docx",
+          "docType": "SMETA_LOCAL",
+          "text_length": 120507,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "См. документацию",
+            "fz": "44-ФЗ",
+            "region": "Не указано"
+          },
+          "smetaSummary": {
+            "totalAmountNumeric": 100000.0,
+            "totalAmount": "100 000,00",
+            "hasVAT": true
+          }
+        },
+        "Требования к заявке, к участнику закупки, инструкция к заявке ред.1.docx": {
+          "filename": "Требования к заявке, к участнику закупки, инструкция к заявке ред.1.docx",
+          "docType": "BID_REQUIREMENTS",
+          "text_length": 19308,
+          "passport": {
+            "nmck": "Не найдено",
+            "deadlineApp": "05.04.2013",
+            "fz": "44-ФЗ",
+            "region": "Не указано"
+          }
+        }
+      },
+      "extracted_data": {
+        "nmck": "Не найдено",
+        "industry": "CONSTRUCTION",
+        "has_inspection": false,
+        "has_smeta": true,
+        "has_contract": true
+      }
+    }
+  },
+  "by_industry": {
+    "CONSTRUCTION": [
+      "tender1 1 stroyka"
+    ],
+    "IT": [
+      "18",
+      "20",
+      "21",
+      "25",
+      "tender 10 it consultant"
+    ],
+    "REAL_ESTATE": [
+      "16",
+      "17",
+      "19",
+      "23",
+      "24",
+      "28",
+      "29",
+      "tender 2 nedvijkka",
+      "tender 4 postavra",
+      "tender 7 oxrana",
+      "tender 8"
+    ],
+    "ENGINEERING": [
+      "13",
+      "14",
+      "15",
+      "22",
+      "26",
+      "27",
+      "tender 12 ovoshi",
+      "tender 3 injiniring",
+      "tender 5 mebel",
+      "tender 9"
+    ],
+    "SECURITY": [],
+    "SUPPLY": [],
+    "FOOD_SUPPLY": [],
+    "UNIVERSAL": []
+  },
+  "statistics": {
+    "total_tenders": 27,
+    "by_industry": {
+      "CONSTRUCTION": 1,
+      "IT": 5,
+      "REAL_ESTATE": 11,
+      "ENGINEERING": 10,
+      "SECURITY": 0,
+      "SUPPLY": 0,
+      "FOOD_SUPPLY": 0,
+      "UNIVERSAL": 0
+    },
+    "total_files": 134
+  }
+}

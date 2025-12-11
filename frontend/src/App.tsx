@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
-import Analyzer from './components/Analyzer';
-import ComplexAudit from './components/ComplexAudit';
+import TenderAnalysis from './components/TenderAnalysis';
 import HistoryView from './components/HistoryView';
 import KnowledgeView from './components/KnowledgeView';
 import Auth from './components/Auth';
+import ResetPassword from './components/ResetPassword';
 import DocumentGenerator from './components/DocumentGenerator';
 import Calculator from './components/Calculator';
 import Profile from './components/Profile';
@@ -23,6 +23,13 @@ const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   // Последний результат анализа для автоподстановки в калькулятор
   const [calcPreset, setCalcPreset] = useState<CalculatorPreset | null>(null);
+  // Данные для генератора документов из анализа
+  const [generatorData, setGeneratorData] = useState<{
+    dealBreakers?: string[];
+    smartQuestions?: string[];
+    tenderNumber?: string;
+    customer?: string;
+  } | undefined>(undefined);
 
   // Проверка токена при загрузке приложения
   useEffect(() => {
@@ -80,37 +87,39 @@ const App: React.FC = () => {
   // Показываем загрузку при проверке авторизации
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-900 dark:bg-[#0f1419] dark:text-white">
-        <div className="text-xl">Загрузка...</div>
+      <div className="min-h-screen bg-[#0f1419] flex items-center justify-center">
+        <div className="text-white text-xl">Загрузка...</div>
       </div>
     );
   }
 
-  // Render app even без реальной авторизации — временный dev-режим без входа по паролю
-  if (!user) {
-    const demoUser: User = {
-      id: 'demo',
-      name: 'Тестовый специалист',
-      company: 'Организация',
-      tariff: 'Start',
-      email: 'demo@tendershield.local',
-    };
-
+  // Render Login if not authenticated (но с поддержкой демо-режима)
+  // Проверяем наличие токена сброса пароля в URL
+  const urlParams = new URLSearchParams(window.location.search);
+  const resetToken = urlParams.get('token');
+  
+  if (resetToken && !user) {
     return (
       <DemoProvider>
         <DemoModeBanner />
-        <NotificationsPanel />
-        <div className="flex min-h-screen bg-slate-50 text-slate-900 dark:bg-[#0f1419] dark:text-white">
-          <Sidebar
-            currentView={currentView}
-            onChangeView={setCurrentView}
-            user={demoUser}
-            onLogout={handleLogout}
-          />
-          <main className="flex-1 ml-0 md:ml-[280px] p-8 h-screen overflow-y-auto custom-scrollbar">
-            {renderContent()}
-          </main>
-        </div>
+        <ResetPassword 
+          token={resetToken} 
+          onSuccess={() => {
+            // Удаляем token из URL и показываем форму входа
+            window.history.replaceState({}, '', window.location.pathname);
+            // Показываем форму входа после успешного сброса
+            setUser(null);
+          }}
+        />
+      </DemoProvider>
+    );
+  }
+
+  if (!user) {
+    return (
+      <DemoProvider>
+        <DemoModeBanner />
+        <Auth onLogin={handleLogin} />
       </DemoProvider>
     );
   }
@@ -118,21 +127,21 @@ const App: React.FC = () => {
   const renderContent = () => {
     switch (currentView) {
       case AppView.ANALYZER:
-        return (
-          <Analyzer
-            onAnalysisComplete={setCalcPreset}
-            onOpenCalculator={openCalculator}
-          />
-        );
       case AppView.AUDIT:
         return (
-          <ComplexAudit
-            onSelectForCalculator={setCalcPreset}
+          <TenderAnalysis
+            mode={currentView === AppView.ANALYZER ? 'single' : 'package'}
+            onAnalysisComplete={setCalcPreset}
             onOpenCalculator={openCalculator}
+            onOpenGenerator={(dealBreakers, smartQuestions) => {
+              setGeneratorData({ dealBreakers, smartQuestions });
+              setCurrentView(AppView.GENERATOR);
+            }}
+            onSelectForCalculator={setCalcPreset}
           />
         );
       case AppView.GENERATOR:
-        return <DocumentGenerator />;
+        return <DocumentGenerator initialData={generatorData} />;
       case AppView.CALCULATOR:
         return <Calculator preset={calcPreset} />;
       case AppView.HISTORY:
@@ -144,12 +153,17 @@ const App: React.FC = () => {
       case AppView.ANALYTICS:
         return <Analytics />;
       case AppView.HELP:
-        return <HelpGuide />;
+        return <HelpGuide onBack={() => setCurrentView(AppView.AUDIT)} />;
       default:
         return (
-          <ComplexAudit
+          <TenderAnalysis
+            mode="package"
             onSelectForCalculator={setCalcPreset}
             onOpenCalculator={openCalculator}
+            onOpenGenerator={(dealBreakers, smartQuestions) => {
+              setGeneratorData({ dealBreakers, smartQuestions });
+              setCurrentView(AppView.GENERATOR);
+            }}
           />
         );
     }
@@ -159,14 +173,14 @@ const App: React.FC = () => {
     <DemoProvider>
       <DemoModeBanner />
       <NotificationsPanel />
-      <div className="flex min-h-screen bg-slate-50 text-slate-900 dark:bg-[#0f1419] dark:text-white">
+      <div className="flex min-h-screen bg-[#0f1419]">
         <Sidebar
           currentView={currentView}
           onChangeView={setCurrentView}
           user={user}
           onLogout={handleLogout}
         />
-        <main className="flex-1 ml-0 md:ml-[280px] p-8 h-screen overflow-y-auto custom-scrollbar">
+        <main className="flex-1 ml-0 md:ml-[280px] p-8 h-screen overflow-hidden">
           {renderContent()}
         </main>
       </div>

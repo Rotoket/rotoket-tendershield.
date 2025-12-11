@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { AuditHistoryItem, VerdictType } from '../types';
 import { fetchAuditHistory } from '../services/geminiService';
-import { Clock, Search, Filter, X, Eye } from 'lucide-react';
+import { Clock, Search, Filter, X, Eye, ChevronDown, ChevronUp, AlertTriangle, Flame } from 'lucide-react';
 import { logEvent } from '../utils/logger';
+import { verdictLabel } from '../utils/hubUiHelpers';
 
 const formatDateTime = (iso: string): string => {
   try {
@@ -37,6 +38,9 @@ const HistoryView: React.FC = () => {
   const [filterVerdict, setFilterVerdict] = useState<'all' | VerdictType>('all');
   const [filterIndustry, setFilterIndustry] = useState<string>('all');
   const [showFilters, setShowFilters] = useState(false);
+  
+  // Раскрытые карточки для отображения деталей
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const load = async () => {
@@ -169,9 +173,9 @@ const HistoryView: React.FC = () => {
                     className="w-full px-3 py-2 bg-[#0f1419] border border-[#2a3441] rounded-lg text-white text-sm focus:outline-none focus:border-[#00d4ff]"
                   >
                     <option value="all">Все вердикты</option>
-                    <option value="STOP">STOP</option>
-                    <option value="CAUTION">CAUTION</option>
-                    <option value="PARTICIPATE">PARTICIPATE</option>
+                    <option value="STOP">Не участвовать</option>
+                    <option value="CAUTION">Осторожно</option>
+                    <option value="PARTICIPATE">Можно участвовать</option>
                   </select>
                 </div>
                 <div>
@@ -213,62 +217,172 @@ const HistoryView: React.FC = () => {
           По запросу ничего не найдено. Попробуйте изменить фильтры или поисковый запрос.
         </div>
       ) : (
-        <div className="flex-1 overflow-auto border border-[#1f2937] rounded-xl bg-[#111827]">
-          <table className="w-full text-xs text-left">
-            <thead className="bg-[#020617] text-slate-300 sticky top-0">
-              <tr>
-                <th className="px-3 py-2 border-b border-[#1f2937]">Дата и время</th>
-                <th className="px-3 py-2 border-b border-[#1f2937]">Тип</th>
-                <th className="px-3 py-2 border-b border-[#1f2937]">Отрасль</th>
-                <th className="px-3 py-2 border-b border-[#1f2937]">Файлы</th>
-                <th className="px-3 py-2 border-b border-[#1f2937]">Балл</th>
-                <th className="px-3 py-2 border-b border-[#1f2937]">Вердикт</th>
-                <th className="px-3 py-2 border-b border-[#1f2937]">Действия</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredItems.map((it) => (
-                <tr key={it.id} className="hover:bg-slate-800/60 cursor-pointer">
-                  <td className="px-3 py-2 border-b border-[#1f2937] align-top">
-                    {formatDateTime(it.createdAt)}
-                  </td>
-                  <td className="px-3 py-2 border-b border-[#1f2937] align-top">
-                    {it.kind === 'package' ? 'Пакет' : 'Один документ'}
-                  </td>
-                  <td className="px-3 py-2 border-b border-[#1f2937] align-top">
-                    {it.industry}
-                  </td>
-                  <td className="px-3 py-2 border-b border-[#1f2937] align-top max-w-xs">
-                    <div className="truncate" title={it.files.join(', ')}>
-                      {it.files.join(', ')}
+        <div className="flex-1 overflow-auto space-y-3">
+          {filteredItems.map((it) => {
+            const isExpanded = expandedItems.has(it.id);
+            const toggleExpand = () => {
+              const newExpanded = new Set(expandedItems);
+              if (newExpanded.has(it.id)) {
+                newExpanded.delete(it.id);
+              } else {
+                newExpanded.add(it.id);
+              }
+              setExpandedItems(newExpanded);
+            };
+
+            return (
+              <div
+                key={it.id}
+                className="bg-[#1a1f2e] border border-[#2a3441] rounded-xl overflow-hidden hover:border-[#00d4ff]/30 transition-colors"
+              >
+                {/* Основная строка */}
+                <div
+                  className="p-4 flex items-center justify-between cursor-pointer hover:bg-[#2a3441]/30 transition-colors"
+                  onClick={toggleExpand}
+                >
+                  <div className="flex items-center gap-4 flex-1">
+                    <div className="flex items-center gap-2">
+                      {isExpanded ? (
+                        <ChevronUp size={16} className="text-slate-400" />
+                      ) : (
+                        <ChevronDown size={16} className="text-slate-400" />
+                      )}
                     </div>
-                  </td>
-                  <td className="px-3 py-2 border-b border-[#1f2937] align-top">
-                    {Math.round(it.summaryScore)} / 100
-                  </td>
-                  <td className="px-3 py-2 border-b border-[#1f2937] align-top">
-                    <span className={`inline-flex px-2 py-0.5 rounded-full border text-[10px] font-semibold ${verdictBadge(it.verdict)}`}>
-                      {it.verdict}
-                    </span>
-                  </td>
-                  <td className="px-3 py-2 border-b border-[#1f2937] align-top">
-                    <button
-                      onClick={() => {
-                        logEvent('History', `Просмотр деталей анализа: ${it.id}`);
-                        // TODO: Открыть модальное окно с деталями или перейти на страницу анализа
-                        alert(`Просмотр анализа ${it.id} - будет реализовано далее`);
-                      }}
-                      className="text-[#00d4ff] hover:text-[#33e0ff] transition-colors flex items-center gap-1 text-xs"
-                      title="Просмотреть детали"
-                    >
-                      <Eye size={14} />
-                      Просмотр
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                    <div className="flex-1 grid grid-cols-5 gap-4 text-sm">
+                      <div>
+                        <p className="text-xs text-slate-400 mb-1">Дата</p>
+                        <p className="text-white">{formatDateTime(it.createdAt)}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-400 mb-1">Тип</p>
+                        <p className="text-white">{it.kind === 'package' ? 'Пакет' : 'Один документ'}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-400 mb-1">Файлы</p>
+                        <p className="text-white truncate" title={it.files.join(', ')}>
+                          {it.files.length} {it.files.length === 1 ? 'файл' : 'файлов'}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-400 mb-1">Балл</p>
+                        <p className="text-white font-bold">{Math.round(it.summaryScore)} / 100</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-400 mb-1">Вердикт</p>
+                        <span className={`inline-flex px-2 py-0.5 rounded-full border text-[10px] font-semibold ${verdictBadge(it.verdict)}`}>
+                          {verdictLabel(it.verdict)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Раскрытое содержимое с новыми полями */}
+                {isExpanded && (
+                  <div className="border-t border-[#2a3441] bg-[#0f1419]/50 p-4 space-y-4">
+                    {/* Executive Summary */}
+                    {it.executive_summary && (
+                      <div className="bg-[#1a1f2e] border border-[#2a3441] rounded-xl p-4">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Flame size={16} className="text-[#ff4444]" />
+                          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                            Главная проблема
+                          </h4>
+                        </div>
+                        <p className="text-white text-sm leading-relaxed">{it.executive_summary}</p>
+                      </div>
+                    )}
+
+                    {/* Deal Breakers */}
+                    {it.deal_breakers && it.deal_breakers.length > 0 && (
+                      <div className="bg-[#ff4444]/10 border border-[#ff4444]/30 rounded-xl p-4">
+                        <div className="flex items-center gap-2 mb-3">
+                          <AlertTriangle size={16} className="text-[#ff4444]" />
+                          <h4 className="text-xs font-bold text-[#ff4444] uppercase tracking-wider">
+                            Критические стоп-факторы ({it.deal_breakers.length})
+                          </h4>
+                        </div>
+                        <ul className="space-y-2">
+                          {it.deal_breakers.map((breaker, idx) => (
+                            <li key={idx} className="flex items-start gap-2 text-sm text-white">
+                              <span className="text-[#ff4444] mt-1">•</span>
+                              <span>{breaker}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* Financial Analysis */}
+                    {it.financial_analysis && (
+                      <div className="bg-[#1a1f2e] border border-[#2a3441] rounded-xl p-4">
+                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">
+                          Финансовый анализ
+                        </h4>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <p className="text-xs text-slate-400 mb-1">Риск маржинальности</p>
+                            <p className={`text-sm font-bold ${
+                              it.financial_analysis.margin_risk === 'High' ? 'text-[#ff4444]' :
+                              it.financial_analysis.margin_risk === 'Medium' ? 'text-[#f59e0b]' :
+                              'text-[#00e648]'
+                            }`}>
+                              {it.financial_analysis.margin_risk === 'High' ? 'Высокий' :
+                               it.financial_analysis.margin_risk === 'Medium' ? 'Средний' :
+                               'Низкий'}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-slate-400 mb-1">Риск кассового разрыва</p>
+                            <p className={`text-sm font-bold ${
+                              it.financial_analysis.cash_gap_risk === 'Yes' ? 'text-[#ff4444]' : 'text-[#00e648]'
+                            }`}>
+                              {it.financial_analysis.cash_gap_risk === 'Yes' ? 'Есть' : 'Нет'}
+                            </p>
+                          </div>
+                        </div>
+                        {it.financial_analysis.reasoning && (
+                          <p className="text-xs text-slate-300 mt-3">{it.financial_analysis.reasoning}</p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Smart Questions */}
+                    {it.smart_questions && it.smart_questions.length > 0 && (
+                      <div className="bg-[#1a1f2e] border border-[#2a3441] rounded-xl p-4">
+                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">
+                          Умные вопросы ({it.smart_questions.length})
+                        </h4>
+                        <ul className="space-y-2">
+                          {it.smart_questions.map((question, idx) => (
+                            <li key={idx} className="flex items-start gap-2 text-sm text-white">
+                              <span className="text-[#00d4ff] mt-1 font-bold">{idx + 1}.</span>
+                              <span>{question}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* Файлы */}
+                    <div>
+                      <p className="text-xs text-slate-400 mb-2">Файлы:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {it.files.map((file, idx) => (
+                          <span
+                            key={idx}
+                            className="px-2 py-1 bg-[#0f1419] border border-[#2a3441] rounded text-xs text-slate-300"
+                          >
+                            {file}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
       <p className="mt-2 text-[10px] text-slate-500">

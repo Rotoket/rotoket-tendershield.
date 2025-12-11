@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     """
 
     OLLAMA_BASE_URL: str = "http://localhost:11434"
-    OLLAMA_MODEL: str = "qwen2.5-coder:7b"  # Используем установленную модель для лучшего качества анализа
+    OLLAMA_MODEL: str = "qwen2.5:0.5b"  # Легкая модель для слабых систем. Для лучшего качества используйте: qwen2.5-coder:7b
 
     API_HOST: str = "0.0.0.0"
     API_PORT: int = 8000
