@@ -45,7 +45,8 @@ $exitCode = $LASTEXITCODE
 # Robocopy returns 0-7 for success, 8+ for errors
 if ($exitCode -le 7) {
     Write-Host "Project files copied successfully" -ForegroundColor Green
-} else {
+}
+else {
     Write-Host "WARNING: Some files may not have been copied (exit code: $exitCode)" -ForegroundColor Yellow
 }
 
@@ -58,7 +59,13 @@ $ImportantFiles = @(
     "infra\docker-compose.yml",
     "infra\nginx.conf",
     ".cursorrules",
-    ".gitignore"
+    ".gitignore",
+    # Новые MCP файлы и шаблоны
+    "mcp\README.md",
+    "mcp\SECURITY.md",
+    "mcp\templates\cursor.mcp.example.json",
+    "mcp\templates\.cursorules.example",
+    "backend\MCP_MEMORY.md"
 )
 
 foreach ($file in $ImportantFiles) {
@@ -72,7 +79,8 @@ foreach ($file in $ImportantFiles) {
         try {
             Copy-Item $sourcePath $destPath -Force -ErrorAction Stop
             Write-Host "  OK: $file" -ForegroundColor Gray
-        } catch {
+        }
+        catch {
             Write-Host "  WARNING: Failed to copy $file" -ForegroundColor Yellow
         }
     }
@@ -156,3 +164,4 @@ Write-Host "Configs: $BackupPathEnv" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "IMPORTANT: Check that backend\.env file is saved in configs folder!" -ForegroundColor Yellow
 Write-Host ""
+

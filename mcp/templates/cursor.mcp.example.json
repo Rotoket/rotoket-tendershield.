@@ -1,0 +1,64 @@
+{
+  "mcpServers": {
+    "sequential-thinking": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"],
+      "timeout": 60000,
+      "description": "Структурированное планирование и разбор сложных задач"
+    },
+    "context7": {
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp"],
+      "timeout": 30000,
+      "description": "Актуальная документация во время разработки"
+    },
+    "playwright": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-playwright"],
+      "timeout": 120000,
+      "description": "E2E тестирование и браузерная автоматизация"
+    },
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem"],
+      "description": "Операции с файлами (создать/прочитать/править/удалить)"
+    },
+    "git": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-git"],
+      "description": "Операции с git (status/branch/commit и т.д.)"
+    },
+    "postgres": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-postgres"],
+      "env": {
+        "DATABASE_URL": "postgresql://postgres:CHANGE_ME@localhost:5432/tender_shield"
+      },
+      "timeout": 30000,
+      "description": "PostgreSQL операции (запросы/миграции)"
+    },
+    "docker": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-docker"],
+      "timeout": 60000,
+      "description": "Управление Docker"
+    },
+    "browser": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-browser"],
+      "timeout": 120000,
+      "description": "Открытие браузера и скриншоты"
+    },
+    "code-quality": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-code-quality"],
+      "timeout": 60000,
+      "description": "Запуск тестов и линтеров"
+    },
+    "npm": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-npm"],
+      "description": "npm зависимости и скрипты"
+    }
+  }
+}

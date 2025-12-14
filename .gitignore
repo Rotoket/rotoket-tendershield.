@@ -9,3 +9,9 @@ __pycache__/
 backend/.env
 frontend/.env
 *.env
+
+# Cursor / MCP (локальные конфиги, НЕ хранить в репозитории)
+.cursorules
+.cursorrules
+**/mcp.json
+**/mcp.local.json

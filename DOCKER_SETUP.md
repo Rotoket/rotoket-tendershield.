@@ -199,3 +199,4 @@ docker-compose up -d
 ---
 
 **Готово! Система должна работать на http://localhost** 🚀
+

@@ -117,3 +117,4 @@ ollama pull qwen2.5-coder:7b
 ---
 
 **Подробная инструкция:** см. `BACKUP_AND_RESTORE.md`
+
