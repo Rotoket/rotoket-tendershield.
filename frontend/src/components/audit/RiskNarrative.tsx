@@ -39,7 +39,7 @@ const debugLog = (location: string, message: string, data: any = {}) => {
       runId: 'run1',
       hypothesisId: 'RiskNarrative'
     })
-  }).catch(() => {});
+  }).catch(() => { });
 };
 
 const RiskNarrative: React.FC<RiskNarrativeProps> = ({ risks, dealBreakers, onGenerateProtocol, onViewKnowledge }) => {
@@ -168,9 +168,8 @@ const RiskNarrative: React.FC<RiskNarrativeProps> = ({ risks, dealBreakers, onGe
             return (
               <div
                 key={index}
-                className={`border rounded-xl transition-all duration-300 overflow-hidden ${
-                  severityConfig.borderColor
-                } ${severityConfig.bgColor}`}
+                className={`border rounded-xl transition-all duration-300 overflow-hidden ${severityConfig.borderColor
+                  } ${severityConfig.bgColor}`}
               >
                 {/* Заголовок карточки */}
                 <div
@@ -246,6 +245,63 @@ const RiskNarrative: React.FC<RiskNarrativeProps> = ({ risks, dealBreakers, onGe
                             </h5>
                           </div>
                           <p className="text-white text-sm leading-relaxed">{risk.recommendation}</p>
+                        </div>
+                      )}
+
+                      {/* Релевантные нормы из Базы знаний */}
+                      {risk.legalReferences && risk.legalReferences.length > 0 && (
+                        <div className="bg-[#1a1f2e] border border-[#2a3441] rounded-xl p-4">
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center gap-2">
+                              <BookOpen size={16} className="text-[#00d4ff]" />
+                              <h5 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                                Релевантные нормы
+                              </h5>
+                            </div>
+                            {onViewKnowledge && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onViewKnowledge(risk.title);
+                                }}
+                                className="text-xs text-[#00d4ff] hover:text-[#06b6d4] flex items-center gap-1 transition-colors"
+                              >
+                                <ExternalLink size={12} />
+                                Найти больше
+                              </button>
+                            )}
+                          </div>
+                          <div className="space-y-2">
+                            {risk.legalReferences.map((ref) => (
+                              <div
+                                key={ref.id}
+                                className="bg-[#0f1419]/50 border border-[#2a3441] rounded-lg p-3"
+                              >
+                                <div className="flex items-start justify-between mb-1">
+                                  <span className="text-xs font-semibold text-white">{ref.title}</span>
+                                  <span className="text-[10px] text-[#00d4ff] ml-2">{ref.lawReference}</span>
+                                </div>
+                                <div className="text-[10px] text-slate-400 mb-1">{ref.category}</div>
+                                <p className="text-[11px] text-slate-300 leading-relaxed">{ref.summary}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Кнопка поиска в Базе знаний, если нет релевантных норм */}
+                      {(!risk.legalReferences || risk.legalReferences.length === 0) && onViewKnowledge && (
+                        <div className="bg-[#1a1f2e]/50 border border-[#2a3441] rounded-xl p-3">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onViewKnowledge(risk.title);
+                            }}
+                            className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-[#00d4ff]/10 hover:bg-[#00d4ff]/20 text-[#00d4ff] border border-[#00d4ff]/30 rounded-lg text-xs font-medium transition-all"
+                          >
+                            <BookOpen size={14} />
+                            Найти релевантные нормы в Базе знаний
+                          </button>
                         </div>
                       )}
                     </div>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { searchLegal } from '../services/geminiService';
 import { BookOpen, Search } from 'lucide-react';
 import { logEvent } from '../utils/logger';
@@ -11,11 +11,41 @@ interface LegalSnippetVm {
   summary: string;
 }
 
-const KnowledgeView: React.FC = () => {
-  const [query, setQuery] = useState('');
+interface KnowledgeViewProps {
+  initialQuery?: string; // Начальный запрос для автопоиска
+}
+
+const KnowledgeView: React.FC<KnowledgeViewProps> = ({ initialQuery }) => {
+  const [query, setQuery] = useState(initialQuery || '');
   const [results, setResults] = useState<LegalSnippetVm[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Автоматический поиск при получении initialQuery
+  useEffect(() => {
+    if (initialQuery && initialQuery.trim()) {
+      setQuery(initialQuery);
+      handleAutoSearch(initialQuery);
+    }
+  }, [initialQuery]);
+
+  const handleAutoSearch = async (searchQuery: string) => {
+    const trimmed = searchQuery.trim();
+    if (!trimmed) return;
+    try {
+      setIsLoading(true);
+      setError(null);
+      logEvent('Knowledge', `Автопоиск по базе знаний: "${trimmed}"`);
+      const data = await searchLegal(trimmed);
+      setResults(data.items || []);
+      logEvent('Knowledge', `Результаты автопоиска получены, элементов: ${data.items?.length ?? 0}`);
+    } catch (e: any) {
+      setError(e?.message ?? 'Ошибка поиска по базе знаний');
+      logEvent('Knowledge', 'Ошибка при автопоиске по базе знаний', 'error', e);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -30,6 +30,8 @@ const App: React.FC = () => {
     tenderNumber?: string;
     customer?: string;
   } | undefined>(undefined);
+  // Запрос для Базы знаний из анализа
+  const [knowledgeQuery, setKnowledgeQuery] = useState<string | undefined>(undefined);
 
   // Проверка токена при загрузке приложения
   useEffect(() => {
@@ -97,13 +99,13 @@ const App: React.FC = () => {
   // Проверяем наличие токена сброса пароля в URL
   const urlParams = new URLSearchParams(window.location.search);
   const resetToken = urlParams.get('token');
-  
+
   if (resetToken && !user) {
     return (
       <DemoProvider>
         <DemoModeBanner />
-        <ResetPassword 
-          token={resetToken} 
+        <ResetPassword
+          token={resetToken}
           onSuccess={() => {
             // Удаляем token из URL и показываем форму входа
             window.history.replaceState({}, '', window.location.pathname);
@@ -138,6 +140,10 @@ const App: React.FC = () => {
               setCurrentView(AppView.GENERATOR);
             }}
             onSelectForCalculator={setCalcPreset}
+            onViewKnowledge={(query) => {
+              setKnowledgeQuery(query);
+              setCurrentView(AppView.KNOWLEDGE);
+            }}
           />
         );
       case AppView.GENERATOR:
@@ -149,7 +155,7 @@ const App: React.FC = () => {
       case AppView.PROFILE:
         return <Profile user={user} />;
       case AppView.KNOWLEDGE:
-        return <KnowledgeView />;
+        return <KnowledgeView initialQuery={knowledgeQuery} />;
       case AppView.ANALYTICS:
         return <Analytics />;
       case AppView.HELP:
@@ -163,6 +169,10 @@ const App: React.FC = () => {
             onOpenGenerator={(dealBreakers, smartQuestions) => {
               setGeneratorData({ dealBreakers, smartQuestions });
               setCurrentView(AppView.GENERATOR);
+            }}
+            onViewKnowledge={(query) => {
+              setKnowledgeQuery(query);
+              setCurrentView(AppView.KNOWLEDGE);
             }}
           />
         );

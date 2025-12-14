@@ -33,6 +33,7 @@ interface TenderAnalysisProps {
   onOpenCalculator?: () => void;
   onOpenGenerator?: (dealBreakers: string[], smartQuestions?: string[]) => void;
   onSelectForCalculator?: (preset: CalculatorPreset) => void;
+  onViewKnowledge?: (query: string) => void; // Интеграция с Базой знаний
 }
 
 // Хелпер для отладочного логирования
@@ -49,7 +50,7 @@ const debugLog = (location: string, message: string, data: any = {}) => {
       runId: 'run1',
       hypothesisId: 'TenderAnalysis'
     })
-  }).catch(() => {});
+  }).catch(() => { });
 };
 
 const TenderAnalysis: React.FC<TenderAnalysisProps> = ({
@@ -58,6 +59,7 @@ const TenderAnalysis: React.FC<TenderAnalysisProps> = ({
   onOpenCalculator,
   onOpenGenerator,
   onSelectForCalculator,
+  onViewKnowledge,
 }) => {
   // #region agent log
   debugLog('TenderAnalysis.tsx:37', 'TenderAnalysis component initialized', { mode });
@@ -65,36 +67,36 @@ const TenderAnalysis: React.FC<TenderAnalysisProps> = ({
 
   // Режим работы (single/package)
   const [currentMode, setCurrentMode] = useState<'single' | 'package'>(mode);
-  
+
   // Состояние для single mode
   const [singleFile, setSingleFile] = useState<File | null>(null);
   const [singleResult, setSingleResult] = useState<AnalysisResult | null>(null);
   const [selectedIndustry, setSelectedIndustry] = useState<string>('UNIVERSAL');
-  
+
   // Состояние для package mode
   const [packageFiles, setPackageFiles] = useState<File[]>([]);
   const [packageResult, setPackageResult] = useState<PackageAnalysis | null>(null);
   const [selectedDocIndex, setSelectedDocIndex] = useState<number>(-1); // -1 = меню закрыто
-  
+
   // Общее состояние
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [rateLimitError, setRateLimitError] = useState<APIError | null>(null);
-  
+
   // Chat state
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputMsg, setInputMsg] = useState('');
   const chatEndRef = useRef<HTMLDivElement>(null);
-  
+
   // Legal references для рисков
   const [legalReferencesMap, setLegalReferencesMap] = useState<Map<string, LegalSnippetVm[]>>(new Map());
-  
+
   // Demo mode
   const { demoState, incrementAnalysis, getOrCreateSession } = useDemo();
   const [user, setUser] = useState<any>(null);
   const [showRegisterModal, setShowRegisterModal] = useState(false);
   const [registerModalType, setRegisterModalType] = useState<'after_analysis' | 'export_pdf' | 'view_history'>('after_analysis');
-  
+
   const { showToast, ToastComponent } = useToast();
 
   // Инициализация чата
@@ -301,7 +303,7 @@ const TenderAnalysis: React.FC<TenderAnalysisProps> = ({
     try {
       const demoSessionId = demoState?.sessionId || null;
       const result = await analyzeDocument(singleFile, selectedIndustry, demoSessionId);
-      
+
       if (result) {
         // #region agent log
         debugLog('TenderAnalysis.tsx:handleAnalyzeSingle', 'Single analysis completed', {
@@ -320,13 +322,13 @@ const TenderAnalysis: React.FC<TenderAnalysisProps> = ({
         });
         // #endregion
         setSingleResult(result);
-        
+
         // Сохраняем анализ в localStorage
         const analysisId = saveAnalysis('single', result);
         debugLog('TenderAnalysis.tsx:handleAnalyzeSingle', 'Analysis saved to storage', { analysisId });
-        
+
         logEvent('TenderAnalysis', `Анализ завершен (single, ${selectedIndustry})`, 'info');
-        
+
         if (onAnalysisComplete && result.passport?.nmck) {
           onAnalysisComplete({
             source: 'single',
@@ -408,11 +410,11 @@ const TenderAnalysis: React.FC<TenderAnalysisProps> = ({
       });
       // #endregion
       setPackageResult(result);
-      
+
       // Сохраняем анализ в localStorage
       const analysisId = saveAnalysis('package', result);
       debugLog('TenderAnalysis.tsx:handleAnalyzePackage', 'Analysis saved to storage', { analysisId });
-      
+
       logEvent('TenderAnalysis', 'Анализ пакета завершен', 'info');
     } catch (err: any) {
       // #region agent log
@@ -516,44 +518,42 @@ const TenderAnalysis: React.FC<TenderAnalysisProps> = ({
 
             {/* Переключатель режима */}
             <div className="flex bg-[#1a1f2e] p-1 rounded-xl border border-[#2a3441]">
-            <button
-              onClick={() => {
-                // #region agent log
-                debugLog('TenderAnalysis.tsx:modeSwitch', 'Switching to single mode', { previousMode: currentMode });
-                // #endregion
-                setCurrentMode('single');
-                setSingleFile(null);
-                setSingleResult(null);
-                setPackageFiles([]);
-                setPackageResult(null);
-              }}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                currentMode === 'single'
-                  ? 'bg-[#00d4ff] text-[#0f1419]'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              Один документ
-            </button>
-            <button
-              onClick={() => {
-                // #region agent log
-                debugLog('TenderAnalysis.tsx:modeSwitch', 'Switching to package mode', { previousMode: currentMode });
-                // #endregion
-                setCurrentMode('package');
-                setSingleFile(null);
-                setSingleResult(null);
-                setPackageFiles([]);
-                setPackageResult(null);
-              }}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                currentMode === 'package'
-                  ? 'bg-[#00d4ff] text-[#0f1419]'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              Пакет документов
-            </button>
+              <button
+                onClick={() => {
+                  // #region agent log
+                  debugLog('TenderAnalysis.tsx:modeSwitch', 'Switching to single mode', { previousMode: currentMode });
+                  // #endregion
+                  setCurrentMode('single');
+                  setSingleFile(null);
+                  setSingleResult(null);
+                  setPackageFiles([]);
+                  setPackageResult(null);
+                }}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${currentMode === 'single'
+                    ? 'bg-[#00d4ff] text-[#0f1419]'
+                    : 'text-slate-400 hover:text-white'
+                  }`}
+              >
+                Один документ
+              </button>
+              <button
+                onClick={() => {
+                  // #region agent log
+                  debugLog('TenderAnalysis.tsx:modeSwitch', 'Switching to package mode', { previousMode: currentMode });
+                  // #endregion
+                  setCurrentMode('package');
+                  setSingleFile(null);
+                  setSingleResult(null);
+                  setPackageFiles([]);
+                  setPackageResult(null);
+                }}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${currentMode === 'package'
+                    ? 'bg-[#00d4ff] text-[#0f1419]'
+                    : 'text-slate-400 hover:text-white'
+                  }`}
+              >
+                Пакет документов
+              </button>
             </div>
           </div>
 
@@ -570,11 +570,10 @@ const TenderAnalysis: React.FC<TenderAnalysisProps> = ({
                       if (isAnalyzing) return;
                       setSelectedIndustry(ind);
                     }}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                      isActive
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${isActive
                         ? 'bg-[#00d4ff] text-[#0f1419]'
                         : 'text-slate-400 hover:text-white'
-                    }`}
+                      }`}
                   >
                     <Icon size={16} />
                     {ind === 'UNIVERSAL' ? 'Универсальный' : ind === 'IT' ? 'IT и ПО' : ind === 'CONSTRUCTION' ? 'Строительство' : 'Медицина'}
@@ -814,9 +813,7 @@ const TenderAnalysis: React.FC<TenderAnalysisProps> = ({
                 onGenerateProtocol={onOpenGenerator ? (dealBreakers) => {
                   onOpenGenerator(dealBreakers, singleResult.smart_questions);
                 } : undefined}
-                onViewKnowledge={(query) => {
-                  logEvent('TenderAnalysis', `Переход в Базу знаний: ${query}`, 'info');
-                }}
+                onViewKnowledge={onViewKnowledge}
               />
 
               {/* Decision Support */}
@@ -909,9 +906,7 @@ const TenderAnalysis: React.FC<TenderAnalysisProps> = ({
                   const smartQuestions = packageResult.hub?.recommendation?.actions?.map(a => a.text) || [];
                   onOpenGenerator(dealBreakers, smartQuestions);
                 } : undefined}
-                onViewKnowledge={(query) => {
-                  logEvent('TenderAnalysis', `Переход в Базу знаний: ${query}`, 'info');
-                }}
+                onViewKnowledge={onViewKnowledge}
               />
 
               {/* Decision Support */}
@@ -945,7 +940,7 @@ const TenderAnalysis: React.FC<TenderAnalysisProps> = ({
                         className={`text-slate-400 transition-transform ${selectedDocIndex !== -1 ? 'rotate-90' : '-rotate-90'}`}
                       />
                     </button>
-                    
+
                     {/* Список документов (показывается при открытии) */}
                     {selectedDocIndex !== -1 && (
                       <div className="overflow-y-auto custom-scrollbar divide-y divide-[#2a3441]">
@@ -953,9 +948,8 @@ const TenderAnalysis: React.FC<TenderAnalysisProps> = ({
                           <button
                             key={doc.filename + idx}
                             onClick={() => setSelectedDocIndex(idx)}
-                            className={`w-full flex items-center justify-between py-3 px-6 text-left hover:bg-[#2a3441]/50 transition-colors ${
-                              idx === selectedDocIndex ? 'bg-[#2a3441] border-l-4 border-[#00d4ff]' : ''
-                            }`}
+                            className={`w-full flex items-center justify-between py-3 px-6 text-left hover:bg-[#2a3441]/50 transition-colors ${idx === selectedDocIndex ? 'bg-[#2a3441] border-l-4 border-[#00d4ff]' : ''
+                              }`}
                           >
                             <div className="flex items-center gap-3 flex-1 min-w-0">
                               <ChevronRight
@@ -973,11 +967,10 @@ const TenderAnalysis: React.FC<TenderAnalysisProps> = ({
                               <span className="text-xs font-bold text-white">
                                 {Math.round(doc.score)}/100
                               </span>
-                              <span className={`px-2 py-0.5 rounded-full border text-[10px] font-semibold ${
-                                doc.verdict === 'STOP' ? 'bg-red-500/10 text-red-400 border-red-500/40' :
-                                doc.verdict === 'CAUTION' ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/40' :
-                                'bg-emerald-500/10 text-emerald-400 border-emerald-500/40'
-                              }`}>
+                              <span className={`px-2 py-0.5 rounded-full border text-[10px] font-semibold ${doc.verdict === 'STOP' ? 'bg-red-500/10 text-red-400 border-red-500/40' :
+                                  doc.verdict === 'CAUTION' ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/40' :
+                                    'bg-emerald-500/10 text-emerald-400 border-emerald-500/40'
+                                }`}>
                                 {doc.verdict}
                               </span>
                             </div>
@@ -1007,11 +1000,10 @@ const TenderAnalysis: React.FC<TenderAnalysisProps> = ({
                 className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 <div
-                  className={`max-w-[80%] rounded-xl p-3 ${
-                    msg.role === 'user'
+                  className={`max-w-[80%] rounded-xl p-3 ${msg.role === 'user'
                       ? 'bg-[#00d4ff] text-[#0f1419]'
                       : 'bg-[#0f1419] text-white border border-[#2a3441]'
-                  }`}
+                    }`}
                 >
                   <p className="text-sm whitespace-pre-wrap">{msg.text}</p>
                 </div>

@@ -120,3 +120,8 @@ export const getLastAnalysis = (mode: 'single' | 'package'): StoredAnalysis | nu
   return filtered.length > 0 ? filtered[0] : null;
 };
 
+
+
+
+
+
