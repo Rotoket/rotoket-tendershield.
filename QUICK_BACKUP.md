@@ -16,8 +16,8 @@ cd c:\Users\Dom\Desktop\tender-shield-pro
 
 ### 2. Проверьте результат
 Бэкап будет в:
-- `D:\Backup\tender-shield-pro-YYYY-MM-DD/` - весь проект
-- `D:\Backup\tender-shield-pro-env-YYYY-MM-DD/` - конфиги и секреты
+- `F:\Backup\tender-shield-pro-YYYY-MM-DD/` - весь проект
+- `F:\Backup\tender-shield-pro-env-YYYY-MM-DD/` - конфиги и секреты
 
 ### 3. Закоммитьте в Git (если используете)
 ```bash
@@ -51,7 +51,7 @@ winget install Ollama.Ollama
 ### 2. Восстановите проект
 ```powershell
 # Скопируйте папку проекта обратно
-xcopy "D:\Backup\tender-shield-pro-YYYY-MM-DD" "c:\Users\Dom\Desktop\tender-shield-pro" /E /I /H /Y
+xcopy "F:\Backup\tender-shield-pro-YYYY-MM-DD" "c:\Users\Dom\Desktop\tender-shield-pro" /E /I /H /Y
 
 # Или клонируйте из Git
 git clone <URL> c:\Users\Dom\Desktop\tender-shield-pro
@@ -60,7 +60,7 @@ git clone <URL> c:\Users\Dom\Desktop\tender-shield-pro
 ### 3. Восстановите конфиги
 ```powershell
 # Скопируйте .env обратно
-copy "D:\Backup\tender-shield-pro-env-YYYY-MM-DD\backend\.env" "c:\Users\Dom\Desktop\tender-shield-pro\backend\.env"
+copy "F:\Backup\tender-shield-pro-env-YYYY-MM-DD\backend\.env" "c:\Users\Dom\Desktop\tender-shield-pro\backend\.env"
 ```
 
 ### 4. Установите зависимости
@@ -100,7 +100,7 @@ ollama pull qwen2.5-coder:7b
 
 ### Перед переустановкой:
 - [ ] Запущен `backup_script.ps1`
-- [ ] Проверен бэкап в `D:\Backup\`
+- [ ] Проверен бэкап в `F:\Backup\`
 - [ ] Закоммичены изменения в Git (если используется)
 - [ ] Сохранен `.env` файл отдельно
 

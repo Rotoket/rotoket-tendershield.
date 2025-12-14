@@ -1,88 +1,56 @@
-# PowerShell скрипт для создания резервной копии проекта
-# Запустите: .\backup_script.ps1
+# PowerShell script for project backup
+# Run: .\backup_script.ps1
 
-$ErrorActionPreference = "Stop"
+$ErrorActionPreference = "Continue"
 
-# Настройки
+# Settings
 $ProjectPath = "c:\Users\Dom\Desktop\tender-shield-pro"
-$BackupPath = "D:\Backup\tender-shield-pro-$(Get-Date -Format 'yyyy-MM-dd_HH-mm-ss')"
-$BackupPathEnv = "D:\Backup\tender-shield-pro-env-$(Get-Date -Format 'yyyy-MM-dd_HH-mm-ss')"
+$BackupBasePath = "F:\Backup"
+$BackupPath = "$BackupBasePath\tender-shield-pro-$(Get-Date -Format 'yyyy-MM-dd_HH-mm-ss')"
+$BackupPathEnv = "$BackupBasePath\tender-shield-pro-env-$(Get-Date -Format 'yyyy-MM-dd_HH-mm-ss')"
 
-Write-Host "📦 Создание резервной копии проекта..." -ForegroundColor Cyan
-Write-Host "Проект: $ProjectPath" -ForegroundColor Gray
-Write-Host "Куда: $BackupPath" -ForegroundColor Gray
+Write-Host "Creating project backup..." -ForegroundColor Cyan
+Write-Host "Project: $ProjectPath" -ForegroundColor Gray
+Write-Host "Backup to: $BackupPath" -ForegroundColor Gray
 Write-Host ""
 
-# Проверка существования проекта
+# Check if project exists
 if (-not (Test-Path $ProjectPath)) {
-    Write-Host "❌ Ошибка: Проект не найден по пути $ProjectPath" -ForegroundColor Red
+    Write-Host "ERROR: Project not found at $ProjectPath" -ForegroundColor Red
     exit 1
 }
 
-# Создание папки для бэкапа
+# Create backup directories
 New-Item -ItemType Directory -Path $BackupPath -Force | Out-Null
 New-Item -ItemType Directory -Path $BackupPathEnv -Force | Out-Null
 
-Write-Host "✅ Папка для бэкапа создана" -ForegroundColor Green
+Write-Host "Backup directories created" -ForegroundColor Green
 
-# Копирование проекта (исключая ненужные папки)
-Write-Host "📁 Копирование файлов проекта..." -ForegroundColor Yellow
+# Copy project using robocopy (handles long paths better)
+Write-Host "Copying project files (this may take a while)..." -ForegroundColor Yellow
 
-$ExcludeDirs = @(
-    "node_modules",
-    "venv",
-    "__pycache__",
-    ".pytest_cache",
-    ".git\objects",
-    "dist",
-    "build",
-    ".next"
+# Exclude patterns for robocopy
+$excludePatterns = @(
+    "/XD", "node_modules", "venv", "__pycache__", ".pytest_cache", ".git\objects", "dist", "build", ".next",
+    "/XF", "*.pyc", "*.pyo", "*.log", ".DS_Store"
 )
 
-$ExcludeFiles = @(
-    "*.pyc",
-    "*.pyo",
-    "*.log",
-    ".DS_Store"
-)
+# Use robocopy for better handling of long paths
+$robocopyArgs = @($ProjectPath, $BackupPath, "/E", "/R:3", "/W:1", "/NFL", "/NDL", "/NP")
+$robocopyArgs += $excludePatterns
 
-# Копируем все, кроме исключений
-Get-ChildItem -Path $ProjectPath -Recurse | Where-Object {
-    $item = $_
-    $relativePath = $item.FullName.Substring($ProjectPath.Length + 1)
-    
-    # Проверяем исключения
-    $shouldExclude = $false
-    foreach ($excludeDir in $ExcludeDirs) {
-        if ($relativePath -like "*\$excludeDir\*" -or $relativePath -like "$excludeDir\*") {
-            $shouldExclude = $true
-            break
-        }
-    }
-    
-    if (-not $shouldExclude) {
-        foreach ($excludeFile in $ExcludeFiles) {
-            if ($item.Name -like $excludeFile) {
-                $shouldExclude = $true
-                break
-            }
-        }
-    }
-    
-    -not $shouldExclude
-} | Copy-Item -Destination {
-    $newPath = $_.FullName.Replace($ProjectPath, $BackupPath)
-    $newDir = Split-Path $newPath -Parent
-    if (-not (Test-Path $newDir)) {
-        New-Item -ItemType Directory -Path $newDir -Force | Out-Null
-    }
-    $newPath
-} -Force
+$robocopyResult = & robocopy @robocopyArgs 2>&1
+$exitCode = $LASTEXITCODE
 
-Write-Host "✅ Файлы проекта скопированы" -ForegroundColor Green
+# Robocopy returns 0-7 for success, 8+ for errors
+if ($exitCode -le 7) {
+    Write-Host "Project files copied successfully" -ForegroundColor Green
+} else {
+    Write-Host "WARNING: Some files may not have been copied (exit code: $exitCode)" -ForegroundColor Yellow
+}
 
-# Копирование важных конфигурационных файлов отдельно
-Write-Host "🔐 Копирование конфигурационных файлов..." -ForegroundColor Yellow
+# Copy important configuration files separately
+Write-Host "Copying configuration files..." -ForegroundColor Yellow
 
 $ImportantFiles = @(
     "backend\.env",
@@ -101,86 +69,90 @@ foreach ($file in $ImportantFiles) {
         if (-not (Test-Path $destDir)) {
             New-Item -ItemType Directory -Path $destDir -Force | Out-Null
         }
-        Copy-Item $sourcePath $destPath -Force
-        Write-Host "  ✅ $file" -ForegroundColor Gray
+        try {
+            Copy-Item $sourcePath $destPath -Force -ErrorAction Stop
+            Write-Host "  OK: $file" -ForegroundColor Gray
+        } catch {
+            Write-Host "  WARNING: Failed to copy $file" -ForegroundColor Yellow
+        }
     }
     else {
-        Write-Host "  ⚠️  $file не найден" -ForegroundColor Yellow
+        Write-Host "  WARNING: $file not found" -ForegroundColor Yellow
     }
 }
 
-Write-Host "✅ Конфигурационные файлы скопированы" -ForegroundColor Green
+Write-Host "Configuration files copied" -ForegroundColor Green
 
-# Экспорт базы данных (если Docker запущен)
-Write-Host "💾 Проверка базы данных..." -ForegroundColor Yellow
+# Export database (if Docker is running)
+Write-Host "Checking database..." -ForegroundColor Yellow
 
 try {
     $dockerRunning = docker ps 2>&1
     if ($LASTEXITCODE -eq 0) {
         $dbContainer = docker ps --filter "name=tender_postgres" --format "{{.Names}}"
         if ($dbContainer) {
-            Write-Host "  📊 Экспорт базы данных..." -ForegroundColor Gray
+            Write-Host "  Exporting database..." -ForegroundColor Gray
             $dbBackupFile = Join-Path $BackupPathEnv "backup_db.sql"
             docker exec tender_postgres pg_dump -U tender_user tender > $dbBackupFile 2>&1
             if ($LASTEXITCODE -eq 0) {
-                Write-Host "  ✅ База данных экспортирована" -ForegroundColor Green
+                Write-Host "  Database exported" -ForegroundColor Green
             }
             else {
-                Write-Host "  ⚠️  Не удалось экспортировать БД (возможно, она пустая)" -ForegroundColor Yellow
+                Write-Host "  WARNING: Failed to export DB (may be empty)" -ForegroundColor Yellow
             }
         }
         else {
-            Write-Host "  ⚠️  Контейнер БД не найден" -ForegroundColor Yellow
+            Write-Host "  WARNING: DB container not found" -ForegroundColor Yellow
         }
     }
     else {
-        Write-Host "  ⚠️  Docker не запущен, пропускаем экспорт БД" -ForegroundColor Yellow
+        Write-Host "  WARNING: Docker not running, skipping DB export" -ForegroundColor Yellow
     }
 }
 catch {
-    Write-Host "  ⚠️  Ошибка при экспорте БД: $_" -ForegroundColor Yellow
+    Write-Host "  WARNING: Error exporting DB: $_" -ForegroundColor Yellow
 }
 
-# Создание списка Ollama моделей
-Write-Host "🤖 Проверка Ollama моделей..." -ForegroundColor Yellow
+# Create list of Ollama models
+Write-Host "Checking Ollama models..." -ForegroundColor Yellow
 
 try {
     $ollamaList = ollama list 2>&1
     if ($LASTEXITCODE -eq 0) {
         $ollamaBackupFile = Join-Path $BackupPathEnv "ollama_models.txt"
         $ollamaList | Out-File $ollamaBackupFile -Encoding UTF8
-        Write-Host "  ✅ Список моделей сохранен" -ForegroundColor Green
+        Write-Host "  Model list saved" -ForegroundColor Green
     }
     else {
-        Write-Host "  ⚠️  Ollama не установлен или не запущен" -ForegroundColor Yellow
+        Write-Host "  WARNING: Ollama not installed or not running" -ForegroundColor Yellow
     }
 }
 catch {
-    Write-Host "  ⚠️  Ollama не найден" -ForegroundColor Yellow
+    Write-Host "  WARNING: Ollama not found" -ForegroundColor Yellow
 }
 
-# Создание информации о системе
-Write-Host "ℹ️  Создание информации о системе..." -ForegroundColor Yellow
+# Create system information
+Write-Host "Creating system information..." -ForegroundColor Yellow
 
 $systemInfo = @"
-Дата создания бэкапа: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
-Система: $(Get-ComputerInfo | Select-Object -ExpandProperty WindowsProductName)
-Версия: $(Get-ComputerInfo | Select-Object -ExpandProperty WindowsVersion)
-Пользователь: $env:USERNAME
-Путь проекта: $ProjectPath
+Backup created: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
+System: $(Get-ComputerInfo | Select-Object -ExpandProperty WindowsProductName)
+Version: $(Get-ComputerInfo | Select-Object -ExpandProperty WindowsVersion)
+User: $env:USERNAME
+Project path: $ProjectPath
 "@
 
 $systemInfoFile = Join-Path $BackupPathEnv "system_info.txt"
 $systemInfo | Out-File $systemInfoFile -Encoding UTF8
 
-Write-Host "✅ Информация о системе сохранена" -ForegroundColor Green
+Write-Host "System information saved" -ForegroundColor Green
 
-# Итоговая информация
+# Final information
 Write-Host ""
-Write-Host "🎉 Резервная копия создана успешно!" -ForegroundColor Green
+Write-Host "Backup completed!" -ForegroundColor Green
 Write-Host ""
-Write-Host "📁 Проект: $BackupPath" -ForegroundColor Cyan
-Write-Host "🔐 Конфиги: $BackupPathEnv" -ForegroundColor Cyan
+Write-Host "Project: $BackupPath" -ForegroundColor Cyan
+Write-Host "Configs: $BackupPathEnv" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "⚠️  ВАЖНО: Проверьте, что файл backend\.env сохранен в папке конфигов!" -ForegroundColor Yellow
+Write-Host "IMPORTANT: Check that backend\.env file is saved in configs folder!" -ForegroundColor Yellow
 Write-Host ""
