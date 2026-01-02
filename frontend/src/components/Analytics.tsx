@@ -14,6 +14,10 @@ import {
 } from '../services/analyticsService';
 import { getCurrentUser } from '../services/authService';
 import { useToast } from './Toast';
+import { fetchAuditHistory } from '../services/geminiService';
+import { calculateDecisionKpi } from '../utils/decisionKpi';
+import { DecisionKPI } from '../types';
+import { logEvent } from '../utils/logger';
 
 const COLORS = ['#00d4ff', '#0891b2', '#f59e0b', '#64748b', '#8b5cf6', '#ec4899'];
 
@@ -25,11 +29,22 @@ const Analytics: React.FC = () => {
   const [averageScores, setAverageScores] = useState<Record<string, { average_score: number; analyses_count: number }>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [decisionKpi, setDecisionKpi] = useState<DecisionKPI | null>(null);
   const { showToast, ToastComponent } = useToast();
 
   useEffect(() => {
     loadAnalytics();
   }, []);
+
+  // Логируем просмотр KPI
+  useEffect(() => {
+    if (decisionKpi && decisionKpi.decisionsMade > 0) {
+      logEvent('Analytics', 'decision_kpi_viewed', 'info', {
+        totalAnalyses: decisionKpi.totalAnalyses,
+        decisionsMade: decisionKpi.decisionsMade,
+      });
+    }
+  }, [decisionKpi]);
 
   const loadAnalytics = async () => {
     try {
@@ -70,6 +85,21 @@ const Analytics: React.FC = () => {
       } catch (error) {
         console.error('Error loading public analytics:', error);
         showToast('error', 'Ошибка загрузки аналитики');
+      }
+
+      // Загружаем историю для расчёта KPI решений
+      try {
+        const historyResponse = await fetchAuditHistory(1000); // Загружаем достаточно для статистики
+        const kpi = calculateDecisionKpi(historyResponse.items);
+        setDecisionKpi(kpi);
+        
+        logEvent('Analytics', 'decision_kpi_calculated', 'info', {
+          totalAnalyses: kpi.totalAnalyses,
+          decisionsMade: kpi.decisionsMade,
+        });
+      } catch (error) {
+        console.error('Error loading decision KPI:', error);
+        // Не показываем ошибку пользователю, просто не отображаем блок
       }
     } catch (error) {
       console.error('Error loading analytics:', error);
@@ -340,30 +370,121 @@ const Analytics: React.FC = () => {
           <div className="bg-[#1a1f2e] border border-[#2a3441] p-6 rounded-xl">
             <h3 className="text-lg font-bold text-white mb-4">Средние оценки по отраслям</h3>
             <div className="space-y-4">
-              {Object.entries(averageScores).map(([industry, data]) => (
-                <div key={industry}>
-                  <div className="flex justify-between text-sm mb-1">
-                    <span className="font-medium text-white">
-                      {industry === 'UNIVERSAL' ? 'Универсальный' : 
-                       industry === 'IT' ? 'IT и ПО' :
-                       industry === 'CONSTRUCTION' ? 'Строительство' :
-                       industry === 'MEDICINE' ? 'Медицина' : industry}
-                    </span>
-                    <span className="text-slate-400">
-                      {data.average_score.toFixed(1)} / 100 ({data.analyses_count} анализов)
-                    </span>
+              {Object.entries(averageScores).map(([industry, data]) => {
+                const scoreData = data as { average_score: number; analyses_count: number };
+                return (
+                  <div key={industry}>
+                    <div className="flex justify-between text-sm mb-1">
+                      <span className="font-medium text-white">
+                        {industry === 'UNIVERSAL' ? 'Универсальный' : 
+                         industry === 'IT' ? 'IT и ПО' :
+                         industry === 'CONSTRUCTION' ? 'Строительство' :
+                         industry === 'MEDICINE' ? 'Медицина' : industry}
+                      </span>
+                      <span className="text-slate-400">
+                        {scoreData.average_score.toFixed(1)} / 100 ({scoreData.analyses_count} анализов)
+                      </span>
+                    </div>
+                    <div className="w-full bg-[#2a3441] rounded-full h-2.5">
+                      <div 
+                        className="bg-[#00d4ff] h-2.5 rounded-full transition-all" 
+                        style={{ width: `${scoreData.average_score}%` }}
+                      ></div>
+                    </div>
                   </div>
-                  <div className="w-full bg-[#2a3441] rounded-full h-2.5">
-                    <div 
-                      className="bg-[#00d4ff] h-2.5 rounded-full transition-all" 
-                      style={{ width: `${data.average_score}%` }}
-                    ></div>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
+
+        {/* Управленческие решения */}
+        {decisionKpi && decisionKpi.decisionsMade > 0 ? (
+          <div className="bg-[#1a1f2e] border border-[#2a3441] p-6 rounded-xl">
+            <h3 className="text-lg font-bold text-white mb-6">Управленческие решения</h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+              {/* Процент завершённых решением */}
+              <div className="bg-[#0f1419] border border-[#2a3441] p-4 rounded-lg">
+                <div className="text-sm text-slate-400 mb-1">Завершено решением</div>
+                <div className="text-2xl font-bold text-white">
+                  {decisionKpi.totalAnalyses > 0
+                    ? Math.round((decisionKpi.decisionsMade / decisionKpi.totalAnalyses) * 100)
+                    : 0}%
+                </div>
+                <div className="text-xs text-slate-500 mt-1">
+                  {decisionKpi.decisionsMade} из {decisionKpi.totalAnalyses}
+                </div>
+              </div>
+
+              {/* Распределение решений */}
+              <div className="bg-[#0f1419] border border-[#2a3441] p-4 rounded-lg">
+                <div className="text-sm text-slate-400 mb-1">Участвовать</div>
+                <div className="text-2xl font-bold text-emerald-400">{decisionKpi.participateCount}</div>
+              </div>
+
+              <div className="bg-[#0f1419] border border-[#2a3441] p-4 rounded-lg">
+                <div className="text-sm text-slate-400 mb-1">С условиями</div>
+                <div className="text-2xl font-bold text-yellow-400">{decisionKpi.participateWithConditionsCount}</div>
+              </div>
+
+              <div className="bg-[#0f1419] border border-[#2a3441] p-4 rounded-lg">
+                <div className="text-sm text-slate-400 mb-1">Отказ</div>
+                <div className="text-2xl font-bold text-red-400">{decisionKpi.doNotParticipateCount}</div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {/* Отложено */}
+              <div className="bg-[#0f1419] border border-[#2a3441] p-4 rounded-lg">
+                <div className="text-sm text-slate-400 mb-1">Отложено</div>
+                <div className="text-2xl font-bold text-slate-400">{decisionKpi.postponeCount}</div>
+              </div>
+
+              {/* Средний score по участию */}
+              {decisionKpi.averageScoreParticipate !== undefined && (
+                <div className="bg-[#0f1419] border border-[#2a3441] p-4 rounded-lg">
+                  <div className="text-sm text-slate-400 mb-1">Средний score (участие)</div>
+                  <div className="text-2xl font-bold text-white">
+                    {Math.round(decisionKpi.averageScoreParticipate)}
+                  </div>
+                </div>
+              )}
+
+              {/* Средний score по отказам */}
+              {decisionKpi.averageScoreRejected !== undefined && (
+                <div className="bg-[#0f1419] border border-[#2a3441] p-4 rounded-lg">
+                  <div className="text-sm text-slate-400 mb-1">Средний score (отказы)</div>
+                  <div className="text-2xl font-bold text-white">
+                    {Math.round(decisionKpi.averageScoreRejected)}
+                  </div>
+                </div>
+              )}
+
+              {/* Высокорисковые участия */}
+              <div className="bg-[#0f1419] border border-[#2a3441] p-4 rounded-lg">
+                <div className="text-sm text-slate-400 mb-1">Высокорисковые участия</div>
+                <div className="text-2xl font-bold text-amber-400">{decisionKpi.highRiskParticipationCount}</div>
+              </div>
+            </div>
+
+            {/* Решения с deal breakers */}
+            {decisionKpi.decisionsWithDealBreakersCount > 0 && (
+              <div className="mt-6 bg-amber-500/10 border border-amber-500/30 p-4 rounded-lg">
+                <div className="text-sm text-amber-400">
+                  Решений с критическими стоп-факторами: {decisionKpi.decisionsWithDealBreakersCount}
+                </div>
+              </div>
+            )}
+          </div>
+        ) : decisionKpi && decisionKpi.totalAnalyses > 0 ? (
+          <div className="bg-[#1a1f2e] border border-[#2a3441] p-6 rounded-xl">
+            <h3 className="text-lg font-bold text-white mb-4">Управленческие решения</h3>
+            <div className="text-slate-400 text-center py-8">
+              Недостаточно данных для аналитики решений
+            </div>
+          </div>
+        ) : null}
 
         {/* System Stats (Admin only) */}
         {systemStats && isAdmin && (

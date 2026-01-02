@@ -32,10 +32,17 @@ const HelpGuide: React.FC<HelpGuideProps> = ({ onBack }) => {
       )}
       {/* Header */}
       <div className="mb-10 text-center">
-        <h2 className="text-4xl font-bold text-white mb-4">Справочный центр Tender.Щит.AI</h2>
+        <h2 className="text-4xl font-bold text-white mb-4">Справочный центр Тендер.Щит</h2>
         <p className="text-lg text-slate-300 max-w-2xl mx-auto leading-relaxed">
-          Этот раздел подскажет, как быстро пройти путь от загрузки тендерной документации до
-          готовых решений: аудита, документов и расчёта маржи.
+          Этот раздел показывает, как пройти путь от загрузки документов до зафиксированного решения
+          директора и последующих действий: калькулятора, протоколов и отчётов.
+        </p>
+        <p className="text-sm text-slate-400 max-w-3xl mx-auto mt-4">
+          Базовый сценарий всегда один и тот же:{' '}
+          <span className="font-mono bg-[#0f1419] px-2 py-0.5 rounded">
+            Анализ → Решение в блоке «Решение по тендеру» → Действия (калькулятор и генератор)
+          </span>
+          . Система проводит аналитическую оценку. Управленческое решение принимает директор.
         </p>
       </div>
 
@@ -78,37 +85,31 @@ const HelpGuide: React.FC<HelpGuideProps> = ({ onBack }) => {
                 Изучите:
                 <br />
                 – «Паспорт тендера» (НМЦК, аванс, обеспечение, сроки, регион)
-                <br />– «Глубокий аудит» — раскрывающиеся блоки с рисками и рекомендациями.
+                <br />– «Глубокий аудит» — раскрывающиеся блоки с рисками и управленческими основаниями.
               </li>
             </ol>
           </div>
 
           <div className="bg-[#0f1419] p-6 rounded-xl border border-[#2a3441]">
             <h4 className="font-bold text-white mb-4 flex items-center gap-2">
-              <Zap size={18} className="text-[#f59e0b]" /> Индекс безопасности (0–100)
+              <Zap size={18} className="text-[#f59e0b]" /> Индекс управленческой нагрузки (0–100)
             </h4>
-            <ul className="space-y-3 text-sm">
-              <li className="flex gap-3">
-                <span className="font-bold text-[#00e648] min-w-[90px]">0–50 (Зелёный)</span>
-                <span className="text-slate-300">
-                  Низкий риск. Условия в целом стандартные, можно идти дальше к расчёту маржи.
-                </span>
-              </li>
-              <li className="flex gap-3">
-                <span className="font-bold text-[#f59e0b] min-w-[90px]">51–80 (Жёлтый)</span>
-                <span className="text-slate-300">
-                  Есть спорные штрафы, сроки или требования. Рекомендуется доработка условий или
-                  запрос разъяснений.
-                </span>
-              </li>
-              <li className="flex gap-3">
-                <span className="font-bold text-[#ff4444] min-w-[90px]">81–100 (Красный)</span>
-                <span className="text-slate-300">
-                  Высокий риск убытков или попадания в РНП. Просмотрите красные блоки в «Глубоком
-                  аудите» и подумайте о протоколе разногласий или жалобе.
-                </span>
-              </li>
-            </ul>
+            <p className="text-sm text-slate-300 leading-relaxed">
+              Индекс показывает, какую совокупную нагрузку по управлению тендером создают условия
+              документов: требования, сроки, штрафы, обеспечение, схема платежей.
+            </p>
+            <div className="text-sm text-slate-300 leading-relaxed mt-3 space-y-2">
+              <p className="font-semibold text-slate-200">Шкала интерпретации:</p>
+              <p>0–30 — рутинное участие (делегируемо). Нагрузка на управление в штатном диапазоне.</p>
+              <p>31–50 — участие с управленческим контролем: требуется внимание к условиям оплаты, срокам и ключевым рискам.</p>
+              <p>51–70 — участие только при личном внимании директора: существенная часть решений не делегируется.</p>
+              <p>71–85 — высокая управленческая нагрузка: требуется отдельное управленческое решение о целесообразности участия.</p>
+              <p>86–100 — управленчески нецелесообразно: нагрузка и риски несоразмерны ожидаемому эффекту.</p>
+              <p className="mt-3">
+                Индекс формируется как сумма четырёх компонентов: документальные противоречия, финансовая неопределённость,
+                юридико-процедурная сложность и объём ручного управленческого контроля.
+              </p>
+            </div>
           </div>
         </div>
       </div>
@@ -143,7 +144,7 @@ const HelpGuide: React.FC<HelpGuideProps> = ({ onBack }) => {
               <li>– Общий индекс безопасности по пакету.</li>
               <li>– Список глобальных рисков с пояснениями.</li>
               <li>– Подсветку самых опасных документов и позиций.</li>
-              <li>– Рекомендации: участвовать, уточнить, готовить разногласия или жалобу.</li>
+              <li>– Основания: участвовать, уточнить, готовить разногласия или жалобу.</li>
             </ul>
           </div>
         </div>
@@ -158,13 +159,14 @@ const HelpGuide: React.FC<HelpGuideProps> = ({ onBack }) => {
           <div>
             <h3 className="text-2xl font-bold text-white">3. Генератор документов</h3>
             <p className="text-slate-400">
-              Помогает быстрее подготовить черновики юридических документов на основе анализа.
+              Помогает подготовить черновики юридических документов на основе уже принятого решения
+              по тендеру.
             </p>
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="p-4 border border-[#2a3441] rounded-xl bg-[#0f1419]">
+            <div className="p-4 border border-[#2a3441] rounded-xl bg-[#0f1419]">
             <div className="flex items-center gap-2 font-bold text-white mb-2">
               <CheckSquare size={20} className="text-[#00d4ff]" /> Протокол разногласий
             </div>
@@ -175,7 +177,7 @@ const HelpGuide: React.FC<HelpGuideProps> = ({ onBack }) => {
             </p>
           </div>
 
-          <div className="p-4 border border-[#2a3441] rounded-xl bg-[#0f1419]">
+            <div className="p-4 border border-[#2a3441] rounded-xl bg-[#0f1419]">
             <div className="flex items-center gap-2 font-bold text-white mb-2">
               <FileText size={20} className="text-[#f59e0b]" /> Жалоба в ФАС
             </div>
@@ -191,8 +193,10 @@ const HelpGuide: React.FC<HelpGuideProps> = ({ onBack }) => {
               <BookOpen size={20} className="text-[#22c55e]" /> Как использовать безопасно
             </div>
             <p className="text-slate-300 text-sm leading-relaxed">
-              Все тексты, которые формирует Tender.Щит.AI, — это <strong>черновики</strong>.
+              Все тексты, которые формирует Тендер.Щит, — это <strong>черновики</strong>.
               Перед отправкой заказчику или в ФАС обязательно проверьте формулировки и реквизиты.
+              Генератор становится доступен только после того, как в блоке «Решение по тендеру»
+              зафиксировано управленческое решение.
             </p>
           </div>
         </div>
@@ -207,14 +211,16 @@ const HelpGuide: React.FC<HelpGuideProps> = ({ onBack }) => {
           <div>
             <h3 className="text-2xl font-bold text-white">4. Калькулятор маржинальности</h3>
             <p className="text-slate-400">
-              Помогает понять, сколько вы реально заработаете с учётом рисков по контракту.
+              Помогает понять, сколько вы реально заработаете с учётом рисков по контракту после
+              того, как решение по тендеру уже зафиксировано.
             </p>
           </div>
         </div>
 
         <div className="text-slate-200 leading-relaxed space-y-4">
           <p>
-            После завершения анализа вы можете открыть «Калькулятор» и нажать кнопку{' '}
+            После завершения анализа и фиксации решения в блоке «Решение по тендеру» вы можете
+            открыть «Калькулятор» и нажать кнопку{' '}
             <span className="font-mono bg-[#0f1419] px-2 rounded">«Заполнить из анализа»</span>. Мы
             подтянем НМЦК и ориентировочную себестоимость.
           </p>
@@ -225,7 +231,7 @@ const HelpGuide: React.FC<HelpGuideProps> = ({ onBack }) => {
             .
           </p>
           <p>
-            В Tender.Щит.AI дополнительно учитывается{' '}
+            В Тендер.Щит дополнительно учитывается{' '}
             <span className="text-[#ff4444] font-bold">риск потерь</span>, связанный с условиями
             контракта (штрафы, обеспечение, сроки). Если система оценила риск высоко,{' '}
             <strong>скорректированная прибыль</strong> может уйти в минус — это повод пересмотреть
@@ -234,14 +240,56 @@ const HelpGuide: React.FC<HelpGuideProps> = ({ onBack }) => {
         </div>
       </div>
 
-      {/* Section 5: История, база знаний и демо‑режим */}
+      {/* Section 5: Решение по тендеру (Decision Layer) */}
+      <div className="bg-[#1a1f2e] border border-[#2a3441] rounded-2xl p-8 mb-8 shadow-sm">
+        <div className="flex items-center gap-4 mb-6 border-b border-[#2a3441] pb-6">
+          <div className="w-14 h-14 bg-[#00e648]/10 rounded-2xl flex items-center justify-center text-[#00e648]">
+            <CheckSquare size={32} />
+          </div>
+          <div>
+            <h3 className="text-2xl font-bold text-white">5. Решение по тендеру</h3>
+            <p className="text-slate-400">
+              Фиксация управленческого решения директора — обязательный этап перед действиями.
+            </p>
+          </div>
+        </div>
+
+        <div className="space-y-4 text-slate-200 leading-relaxed">
+          <p>
+            После завершения анализа внизу экрана появляется блок <strong className="text-white">«Решение по тендеру»</strong>.
+            Это единственное место, где директор фиксирует своё решение.
+          </p>
+          <div className="bg-[#0f1419] border border-[#2a3441] rounded-xl p-4">
+            <p className="text-sm font-semibold text-white mb-2">Доступные варианты решения:</p>
+            <ul className="space-y-2 text-sm">
+              <li className="flex items-start gap-2">
+                <span className="text-[#00e648] font-bold">✅</span>
+                <span><strong>Участвовать</strong> — решение об участии в тендере</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-[#ff4444] font-bold">❌</span>
+                <span><strong>Не участвовать</strong> — решение об отказе (требует комментария с причиной)</span>
+              </li>
+            </ul>
+            <p className="text-xs text-slate-400 mt-3">
+              Дополнительные опции (участие с условиями, отложить решение) доступны по кнопке «Показать дополнительные опции».
+            </p>
+          </div>
+          <p className="text-sm">
+            <strong className="text-white">Важно:</strong> Без зафиксированного решения калькулятор, генератор документов
+            и экспорт отчётов остаются заблокированными. Это каноническое правило системы.
+          </p>
+        </div>
+      </div>
+
+      {/* Section 6: История, база знаний и демо‑режим */}
       <div className="bg-[#1a1f2e] border border-[#2a3441] rounded-2xl p-8 mb-8 shadow-sm">
         <div className="flex items-center gap-4 mb-6 border-b border-[#2a3441] pb-6">
           <div className="w-14 h-14 bg-[#38bdf8]/10 rounded-2xl flex items-center justify-center text-[#38bdf8]">
             <Clock size={32} />
           </div>
           <div>
-            <h3 className="text-2xl font-bold text-white">5. История и база знаний</h3>
+            <h3 className="text-2xl font-bold text-white">6. История и база знаний</h3>
             <p className="text-slate-400">
               Все ваши проверки и юридические материалы доступны прямо в интерфейсе.
             </p>

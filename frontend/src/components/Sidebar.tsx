@@ -1,27 +1,87 @@
 import React from 'react';
-import { AppView, User } from '../types';
-import { Shield, FileSearch, BookOpen, Clock, FileText, LogOut, Zap, Calculator, Settings, BarChart3, HelpCircle } from 'lucide-react';
+import { AppView, User, UserDecision } from '../types';
+import { Shield, FileSearch, BookOpen, Clock, FileText, LogOut, Zap, Calculator, Settings, BarChart3, HelpCircle, Lock } from 'lucide-react';
 
 interface SidebarProps {
   currentView: AppView;
   onChangeView: (view: AppView) => void;
   user: User | null;
   onLogout: () => void;
+  /** Зафиксировано ли управленческое решение (для блокировки пунктов меню) */
+  decisionFixed?: boolean;
+  /** Текущее решение (для проверки фиксации) */
+  currentDecision?: UserDecision | null;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, user, onLogout }) => {
+const Sidebar: React.FC<SidebarProps> = ({ 
+  currentView, 
+  onChangeView, 
+  user, 
+  onLogout,
+  decisionFixed = false,
+  currentDecision = null,
+}) => {
   // Проверяем, является ли пользователь админом
   const isAdmin = user?.email === 'admin@tendershield.pro' || user?.email?.toLowerCase().includes('admin');
 
+  // Определяем, зафиксировано ли решение
+  // Решение считается зафиксированным, если:
+  // 1. Явно передано decisionFixed=true
+  // 2. Или currentDecision существует и имеет timestamp (значит зафиксировано)
+  const isDecisionFixed = decisionFixed || (currentDecision?.timestamp !== undefined);
+
+  // Пункты меню, которые доступны только после фиксации решения
+  const lockedAfterDecision = [
+    AppView.GENERATOR,
+    AppView.CALCULATOR,
+    AppView.HISTORY,
+    AppView.KNOWLEDGE,
+  ];
+
   const menuItems = [
-    { id: AppView.AUDIT, label: 'Анализ тендера', icon: FileSearch },
-    { id: AppView.GENERATOR, label: 'Генератор', icon: FileText },
-    { id: AppView.CALCULATOR, label: 'Калькулятор', icon: Calculator },
-    { id: AppView.HISTORY, label: 'История проверок', icon: Clock },
-    { id: AppView.KNOWLEDGE, label: 'База знаний', icon: BookOpen },
+    { 
+      id: AppView.AUDIT, 
+      label: 'Анализ тендера', 
+      icon: FileSearch,
+      locked: false, // Всегда доступен
+    },
+    { 
+      id: AppView.GENERATOR, 
+      label: 'Генератор', 
+      icon: FileText,
+      locked: !isDecisionFixed,
+    },
+    { 
+      id: AppView.CALCULATOR, 
+      label: 'Калькулятор', 
+      icon: Calculator,
+      locked: !isDecisionFixed,
+    },
+    { 
+      id: AppView.HISTORY, 
+      label: 'История проверок', 
+      icon: Clock,
+      locked: !isDecisionFixed,
+    },
+    { 
+      id: AppView.KNOWLEDGE, 
+      label: 'База знаний', 
+      icon: BookOpen,
+      locked: !isDecisionFixed,
+    },
     // Аналитика только для админов
-    ...(isAdmin ? [{ id: AppView.ANALYTICS, label: 'Аналитика', icon: BarChart3 }] : []),
-    { id: AppView.HELP, label: 'Помощь', icon: HelpCircle },
+    ...(isAdmin ? [{ 
+      id: AppView.ANALYTICS, 
+      label: 'Аналитика', 
+      icon: BarChart3,
+      locked: false, // Аналитика всегда доступна админам
+    }] : []),
+    { 
+      id: AppView.HELP, 
+      label: 'Помощь', 
+      icon: HelpCircle,
+      locked: false, // Помощь всегда доступна
+    },
   ];
 
   return (
@@ -33,33 +93,71 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, user, onLo
             <Shield size={24} strokeWidth={2.5} />
           </div>
           <div>
-            <h1 className="font-bold text-white text-lg tracking-tight">Тендер.Щит.AI</h1>
+            <h1 className="font-bold text-white text-lg tracking-tight">Тендер.Щит</h1>
             <p className="text-[#a8b5cc] text-[10px] font-mono tracking-widest uppercase">Защита бизнеса</p>
           </div>
         </div>
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 px-4 space-y-2">
+      <nav className="flex-1 px-4 space-y-2 overflow-y-auto">
         <div className="text-[#4b5563] text-xs font-bold uppercase tracking-widest px-4 mb-4 mt-4">
-          Рабочая зона
+          {isDecisionFixed ? 'Рабочая зона' : 'Анализ тендера'}
         </div>
+        
+        {/* Индикатор режима (если решение не зафиксировано) */}
+        {!isDecisionFixed && (
+          <div className="mx-4 mb-4 p-3 bg-[#0a0e13] border border-[#2a3441] rounded-lg">
+            <p className="text-xs text-[#4b5563] leading-relaxed">
+              Инструменты станут доступны после фиксации управленческого решения
+            </p>
+          </div>
+        )}
 
         {menuItems.map(item => {
           const Icon = item.icon;
           const isActive = currentView === item.id;
+          const isLocked = item.locked ?? false;
+          
           return (
-            <button
+            <div
               key={item.id}
-              onClick={() => onChangeView(item.id)}
-              className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-xl text-sm font-medium transition-all duration-200 border ${isActive
-                  ? 'bg-[rgba(0,212,255,0.1)] text-[#00d4ff] border-[#00d4ff]/30 shadow-[0_0_15px_rgba(0,212,255,0.1)]'
-                  : 'text-[#a8b5cc] border-transparent hover:bg-[#1a1f2e] hover:text-white'
-                }`}
+              className="relative group"
+              title={isLocked ? 'Доступно после фиксации решения директора' : undefined}
             >
-              <Icon size={20} />
-              {item.label}
-            </button>
+              <button
+                onClick={() => {
+                  if (!isLocked) {
+                    onChangeView(item.id);
+                  }
+                }}
+                disabled={isLocked}
+                className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-xl text-sm font-medium transition-all duration-200 border ${
+                  isLocked
+                    ? 'text-[#4b5563] border-transparent bg-[#0a0e13] cursor-not-allowed opacity-50'
+                    : isActive
+                    ? 'bg-[rgba(0,212,255,0.1)] text-[#00d4ff] border-[#00d4ff]/30 shadow-[0_0_15px_rgba(0,212,255,0.1)]'
+                    : 'text-[#a8b5cc] border-transparent hover:bg-[#1a1f2e] hover:text-white'
+                }`}
+              >
+                {isLocked ? (
+                  <Lock size={18} className="flex-shrink-0" />
+                ) : (
+                  <Icon size={20} />
+                )}
+                <span className="flex-1 text-left">{item.label}</span>
+              </button>
+              
+              {/* Hover-подсказка для заблокированных пунктов */}
+              {isLocked && (
+                <div className="absolute left-full ml-2 top-1/2 -translate-y-1/2 z-50 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                  <div className="bg-[#1a1f2e] border border-[#2a3441] rounded-lg px-3 py-2 text-xs text-slate-300 whitespace-nowrap shadow-xl">
+                    Доступно после фиксации решения директора
+                    <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-[#2a3441]"></div>
+                  </div>
+                </div>
+              )}
+            </div>
           )
         })}
 

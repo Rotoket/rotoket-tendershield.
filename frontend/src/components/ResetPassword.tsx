@@ -79,8 +79,8 @@ const ResetPassword: React.FC<ResetPasswordProps> = ({ token, onSuccess }) => {
 
                     <button
                         onClick={() => {
-                            // Удаляем токен из URL и перенаправляем на форму входа
-                            window.history.replaceState({}, '', window.location.pathname);
+                            // Очищаем токен из URL и вызываем callback
+                            window.history.replaceState({}, '', '/auth');
                             if (onSuccess) {
                                 onSuccess();
                             }

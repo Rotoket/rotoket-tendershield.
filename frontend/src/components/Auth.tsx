@@ -6,9 +6,11 @@ import ForgotPassword from './ForgotPassword';
 
 interface AuthProps {
     onLogin: (user: User) => void;
+    /** Причина авторизации (для позиционирования) */
+    reason?: 'fix_decision' | 'general';
 }
 
-const Auth: React.FC<AuthProps> = ({ onLogin }) => {
+const Auth: React.FC<AuthProps> = ({ onLogin, reason = 'general' }) => {
     const [isLoading, setIsLoading] = useState(false);
     const [isRegisterMode, setIsRegisterMode] = useState(false);
     const [showForgotPassword, setShowForgotPassword] = useState(false);
@@ -28,12 +30,16 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
             ? tariffMap[authUser.tariff_id - 1]
             : 'Start';
 
+        // Безопасная обработка email (может быть undefined в fallback случае)
+        const email = authUser.email || '';
+        const emailName = email.split('@')[0] || 'Специалист';
+
         return {
-            id: authUser.id.toString(),
-            name: authUser.name || authUser.email.split('@')[0] || 'Специалист',
+            id: (authUser.id !== undefined && authUser.id !== null) ? authUser.id.toString() : '0',
+            name: authUser.name || emailName,
             company: authUser.company || 'Организация',
             tariff,
-            email: authUser.email,
+            email: email || '',
         };
     };
 
@@ -103,8 +109,22 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                     <div className="inline-flex items-center justify-center w-16 h-16 bg-[#1a1f2e] border border-[#2a3441] rounded-2xl mb-6 shadow-lg shadow-[#00d4ff]/10">
                         <Shield className="text-[#00d4ff]" size={32} />
                     </div>
-                    <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">Тендер.Щит<span className="text-[#00d4ff]">.AI</span></h1>
-                    <p className="text-[#a8b5cc]">Единая система защиты тендерного отдела</p>
+                    {reason === 'fix_decision' ? (
+                        <>
+                            <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">
+                                Подтверждение доступа для фиксации решения
+                            </h1>
+                            <p className="text-[#a8b5cc] text-sm leading-relaxed">
+                                Решение по тендеру фиксируется за конкретным лицом.
+                                Это требуется для отчётов, аудита и защиты репутации.
+                            </p>
+                        </>
+                    ) : (
+                        <>
+                            <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">Тендер.Щит</h1>
+                            <p className="text-[#a8b5cc]">Система управленческих решений по тендерам</p>
+                        </>
+                    )}
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
@@ -205,7 +225,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                                 >
                                     пользовательского соглашения
                                 </button>{' '}
-                                и понимаю, что сервис даёт аналитические рекомендации и не является юридической консультацией.
+                                и понимаю, что сервис фиксирует аналитическую оценку и не является юридической консультацией.
                             </span>
                         </label>
                         <label className="flex items-start gap-2">
@@ -294,13 +314,13 @@ const Auth: React.FC<AuthProps> = ({ onLogin }) => {
                             {activeDoc === 'terms' ? (
                                 <>
                                     <p>
-                                        Сервис «Тендер.Щит.AI» предоставляет пользователю инструменты аналитической оценки тендерной документации. Сервис не является юридической консультацией и не гарантирует исход закупочных процедур.
+                                        Сервис «Тендер.Щит» предоставляет пользователю инструменты аналитической оценки тендерной документации. Сервис не является юридической консультацией и не гарантирует исход закупочных процедур.
                                     </p>
                                     <p>
                                         Пользователь обязуется использовать сервис только при наличии законных оснований для обработки документов, полученных от заказчиков и партнёров, и самостоятельно несёт ответственность за содержание загружаемых файлов.
                                     </p>
                                     <p>
-                                        Все решения об участии в закупках, подаче жалоб, подготовке заявок и иных действиях принимает пользователь либо его уполномоченный специалист. Результаты анализа носят рекомендательный, предварительный характер и требуют проверки специалистом.
+                                        Все решения об участии в закупках, подаче жалоб, подготовке заявок и иных действиях принимает пользователь либо его уполномоченный специалист. Результаты анализа носят предварительный характер и требуют проверки специалистом.
                                     </p>
                                     <p>
                                         Администратор сервиса оставляет за собой право изменять функционал и правила работы сервиса, публикуя обновлённую редакцию соглашения. Продолжение использования сервиса означает согласие с актуальными условиями.

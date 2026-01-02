@@ -7,6 +7,7 @@ interface HeroVerdictProps {
   score: number;
   executiveSummary?: string;
   mainProblem?: string; // Главная проблема из executive_summary
+  hasDealBreakers?: boolean;
   onShowDetails?: () => void;
   onGenerateRefusal?: () => void;
 }
@@ -16,6 +17,7 @@ const HeroVerdict: React.FC<HeroVerdictProps> = ({
   score,
   executiveSummary,
   mainProblem,
+  hasDealBreakers,
   onShowDetails,
   onGenerateRefusal,
 }) => {
@@ -28,20 +30,20 @@ const HeroVerdict: React.FC<HeroVerdictProps> = ({
           borderColor: 'border-[#ff4444]/30',
           iconColor: 'text-[#ff4444]',
           badgeColor: 'bg-[#ff4444]',
-          title: 'НЕ РЕКОМЕНДУЕТСЯ',
-          subtitle: 'Высокий Риск',
-          actionText: 'Сформировать отказ',
+          title: 'Обнаружены факторы, требующие управленческого решения',
+          subtitle: 'Аналитический вывод для рассмотрения директором',
+          actionText: 'Показать детали',
         };
       case 'CAUTION':
         return {
           icon: AlertTriangle,
-          bgColor: 'bg-[#f59e0b]/10',
-          borderColor: 'border-[#f59e0b]/30',
+          bgColor: hasDealBreakers ? 'bg-[#b45309]/20' : 'bg-[#f59e0b]/10',
+          borderColor: hasDealBreakers ? 'border-[#f97316]/60' : 'border-[#f59e0b]/30',
           iconColor: 'text-[#f59e0b]',
-          badgeColor: 'bg-[#f59e0b]',
-          title: 'ТРЕБУЕТ ВНИМАНИЯ',
-          subtitle: 'Средний Риск',
-          actionText: 'Показать риски',
+          badgeColor: hasDealBreakers ? 'bg-[#b91c1c]' : 'bg-[#f59e0b]',
+          title: 'Обнаружены факторы, требующие управленческого решения',
+          subtitle: 'Аналитический вывод для рассмотрения директором',
+          actionText: hasDealBreakers ? 'Показать факторы' : 'Показать риски',
         };
       case 'PARTICIPATE':
         return {
@@ -50,8 +52,8 @@ const HeroVerdict: React.FC<HeroVerdictProps> = ({
           borderColor: 'border-[#00e648]/30',
           iconColor: 'text-[#00e648]',
           badgeColor: 'bg-[#00e648]',
-          title: 'РЕКОМЕНДУЕТСЯ',
-          subtitle: 'Низкий Риск',
+          title: 'УЧАСТИЕ ДОПУСТИМО',
+          subtitle: 'Риск-нагрузка находится в допустимом диапазоне',
           actionText: 'Показать детали',
         };
       default:
@@ -121,12 +123,14 @@ const HeroVerdict: React.FC<HeroVerdictProps> = ({
                   {config.subtitle}
                 </span>
               </div>
-              <p className="text-slate-400 text-xs">Вердикт системы</p>
+              <p className="text-slate-400 text-xs">Аналитический вывод для рассмотрения директором</p>
             </div>
           </div>
           <div className="text-right">
             <div className="text-2xl font-bold text-white">{score}</div>
-            <div className="text-[10px] font-bold text-slate-400 uppercase">Safety Score</div>
+            <div className="text-[10px] font-bold text-slate-400 uppercase">
+              ИНДЕКС УПРАВЛЕНЧЕСКОЙ НАГРУЗКИ
+            </div>
           </div>
         </div>
 

@@ -14,13 +14,22 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from database import Base, get_database_url
 from config import settings
 
+# ФАЗА 5: Явно импортируем все модели procurement для регистрации в Base.metadata
+# Это необходимо, чтобы Alembic мог их обнаружить при autogenerate
+from database import (
+    ProcurementKnowledgeBase,
+    ProcurementBlocker,
+    AnalysisEvidenceExtended,
+    ProcurementDecisionExtended
+)
+
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
 
-# Переопределяем URL из настроек, если не задан в alembic.ini
-if not config.get_main_option("sqlalchemy.url"):
-    config.set_main_option("sqlalchemy.url", get_database_url())
+# ВСЕГДА переопределяем URL из настроек (даже если задан в alembic.ini)
+# Это позволяет использовать SQLite через TENDER_DB_HOST=sqlite
+config.set_main_option("sqlalchemy.url", get_database_url())
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.

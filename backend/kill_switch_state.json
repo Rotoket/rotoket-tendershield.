@@ -1,0 +1,116 @@
+{
+  "current_mode": "NORMAL",
+  "is_active": false,
+  "last_activation": {
+    "activation_id": "KS-A3AD2769",
+    "timestamp": "2025-12-24T10:05:50.818139",
+    "trigger": "manual_admin",
+    "reason": "Деактивация: Тестовая деактивация",
+    "previous_mode": "LOCKDOWN",
+    "new_mode": "NORMAL",
+    "activated_by": "test_user",
+    "system_version": null,
+    "metadata": {}
+  },
+  "activation_history": [
+    {
+      "activation_id": "KS-89FC0EE5",
+      "timestamp": "2025-12-24T09:46:00.143755",
+      "trigger": "manual_admin",
+      "reason": "Тестовая активация",
+      "previous_mode": "NORMAL",
+      "new_mode": "SAFE",
+      "activated_by": null,
+      "system_version": null,
+      "metadata": {}
+    },
+    {
+      "activation_id": "KS-FCF80907",
+      "timestamp": "2025-12-24T09:46:00.143755",
+      "trigger": "manual_admin",
+      "reason": "Деактивация: Тестовая деактивация",
+      "previous_mode": "SAFE",
+      "new_mode": "NORMAL",
+      "activated_by": null,
+      "system_version": null,
+      "metadata": {}
+    },
+    {
+      "activation_id": "KS-DDBABE1D",
+      "timestamp": "2025-12-24T09:46:22.978773",
+      "trigger": "manual_admin",
+      "reason": "Тестовая активация",
+      "previous_mode": "NORMAL",
+      "new_mode": "SAFE",
+      "activated_by": null,
+      "system_version": null,
+      "metadata": {}
+    },
+    {
+      "activation_id": "KS-A9027B0F",
+      "timestamp": "2025-12-24T09:46:22.979775",
+      "trigger": "manual_admin",
+      "reason": "Деактивация: Тестовая деактивация",
+      "previous_mode": "SAFE",
+      "new_mode": "NORMAL",
+      "activated_by": null,
+      "system_version": null,
+      "metadata": {}
+    },
+    {
+      "activation_id": "KS-936A2DBA",
+      "timestamp": "2025-12-24T09:46:28.870960",
+      "trigger": "manual_admin",
+      "reason": "Тест Safe Mode Handler",
+      "previous_mode": "NORMAL",
+      "new_mode": "SAFE",
+      "activated_by": null,
+      "system_version": null,
+      "metadata": {}
+    },
+    {
+      "activation_id": "KS-D6415DC9",
+      "timestamp": "2025-12-24T09:46:28.870960",
+      "trigger": "manual_admin",
+      "reason": "Деактивация: Тест завершён",
+      "previous_mode": "SAFE",
+      "new_mode": "NORMAL",
+      "activated_by": null,
+      "system_version": null,
+      "metadata": {}
+    },
+    {
+      "activation_id": "KS-0B575246",
+      "timestamp": "2025-12-24T10:05:50.817109",
+      "trigger": "manual_admin",
+      "reason": "Тестовая активация",
+      "previous_mode": "NORMAL",
+      "new_mode": "SAFE",
+      "activated_by": "test_user",
+      "system_version": null,
+      "metadata": {}
+    },
+    {
+      "activation_id": "KS-0C99DBED",
+      "timestamp": "2025-12-24T10:05:50.818139",
+      "trigger": "security_command",
+      "reason": "Тестовая блокировка",
+      "previous_mode": "SAFE",
+      "new_mode": "LOCKDOWN",
+      "activated_by": "test_user",
+      "system_version": null,
+      "metadata": {}
+    },
+    {
+      "activation_id": "KS-A3AD2769",
+      "timestamp": "2025-12-24T10:05:50.818139",
+      "trigger": "manual_admin",
+      "reason": "Деактивация: Тестовая деактивация",
+      "previous_mode": "LOCKDOWN",
+      "new_mode": "NORMAL",
+      "activated_by": "test_user",
+      "system_version": null,
+      "metadata": {}
+    }
+  ]
+}

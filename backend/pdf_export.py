@@ -249,7 +249,7 @@ def generate_pdf_report(analysis_data: Dict, filename: str = None) -> BytesIO:
     # Футер
     story.append(Spacer(1, 20))
     story.append(Paragraph(
-        f"<i>Отчет сгенерирован системой Tender Shield Pro</i><br/>"
+        f"<i>Отчет сгенерирован системой Тендер.Щит</i><br/>"
         f"<i>Дата: {datetime.now().strftime('%d.%m.%Y %H:%M')}</i>",
         ParagraphStyle(
             'Footer',

@@ -1,0 +1,13 @@
+{
+  "snapshot_id": "DS-4EEEE2F7",
+  "files": [
+    {
+      "filename": "sample.xlsx",
+      "path": "C:\\Users\\Dom\\AppData\\Local\\Temp\\pytest-of-Dom\\pytest-3\\test_analyze_single_file_reads0\\sample.xlsx",
+      "size": 4912
+    }
+  ],
+  "hash": "cbc51410046a0c50e2f07b060d0841e31b27ca35900d909a109a89b16f377406",
+  "created_at": "2025-12-26T06:14:53.827533",
+  "industry": "UNIVERSAL"
+}

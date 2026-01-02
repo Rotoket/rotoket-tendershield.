@@ -1,0 +1,84 @@
+name: CI Guards
+
+on:
+  pull_request:
+    branches: [ main, develop ]
+  push:
+    branches: [ main, develop ]
+
+jobs:
+  architecture-guards:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install dependencies
+      run: |
+        pip install -r requirements.txt || true
+    
+    - name: Run Architecture Boundary Guard
+      run: |
+        python backend/ci_guards/architecture_boundary_guard.py
+      continue-on-error: false
+    
+    - name: Run Decision Integrity Guard
+      run: |
+        python backend/ci_guards/decision_integrity_guard.py
+      continue-on-error: false
+    
+    - name: Run Prompt Abuse Guard
+      run: |
+        python backend/ci_guards/prompt_abuse_guard.py
+      continue-on-error: false
+    
+    - name: Run Output Contract Guard
+      run: |
+        python backend/ci_guards/output_contract_guard.py
+      continue-on-error: false
+    
+    - name: Run Red Team Replay
+      run: |
+        python backend/ci_guards/red_team_replay.py
+      continue-on-error: false
+    
+    - name: Run All Guards (Summary)
+      run: |
+        python backend/ci_guards/run_all_guards.py
+      continue-on-error: false
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

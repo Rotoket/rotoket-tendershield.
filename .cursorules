@@ -1,0 +1,67 @@
+# TENDER SHIELD PRO — CURSOR RULES (v2)
+
+## PROJECT CONTEXT
+- **Product**: Tender Shield Pro — SaaS‑платформа для быстрой оценки тендеров и защиты денег директора.
+- **Stack**: FastAPI (backend, Python 3.10), React + TypeScript + Vite + Tailwind (frontend), Ollama (локальный LLM), SQLite/PostgreSQL (БД), ChromaDB (RAG).
+- **Goal**: Директор за 30 секунд понимает: участвовать или не участвовать в тендере, с оценкой денег и рисков.
+
+## FILE STRUCTURE (UP TO DATE)
+- `backend/` — API, анализ, авторизация, тарифы, интеграции.
+- `backend/main.py` — основной FastAPI‑приложение, эндпоинты анализа, регистрации, пакетного аудита.
+- `backend/rag_engine.py` — RAG‑движок (ChromaDB + OllamaEmbeddings).
+- `backend/config.py` — настройки через `TENDER_...` переменные.
+- `backend/database.py` — модели SQLAlchemy, подключение к БД (PostgreSQL + fallback SQLite).
+- `frontend/` — SPA (анализ, комплексный аудит, калькулятор, генератор документов, история).
+- `frontend/src/components/Auth.tsx` — экран входа/регистрации + «Забыли пароль?».
+- `frontend/tests/e2e/*.spec.ts` — Playwright e2e‑тесты фронта.
+- `infra/` — `docker-compose` и `nginx` для прод‑режима (пока не используется на новой машине).
+- `logika/`, `Cursor MD/`, `mcp/` — документация, стратегии, MCP‑настройки.
+
+## CODING GUIDELINES
+- **Python (backend)**: только простые функции и модули, без сложного наследования/метаклассов/рефлексии.
+- **TypeScript (frontend)**: функциональные компоненты, типы в `src/types.ts`, UI — деловой русский язык.
+- **LLM / RAG**:
+  - использовать `safe_ollama_invoke` и `rag_engine.get_law_snippets`;
+  - при ошибках Ollama не ломать основной флоу (возвращать деградированный, но рабочий результат).
+- **База**:
+  - dev‑режим допускает `TENDER_DB_HOST=sqlite` (файл `tender_shield.db`);
+  - PostgreSQL не должен блокировать запуск dev‑окружения.
+
+## MCP USAGE
+- MCP‑конфиг лежит в `mcp.json` в системной папке Cursor; он уже содержит:
+  - `sequential-thinking` — для пошагового анализа сложных задач;
+  - `context7` — для доступа к документации библиотек и API;
+  - `playwright`, `docker`, `postgres`, `filesystem`, `npm`, `code-quality`, `browser`, `git`.
+- В этом репозитории при сложных шагах ассистент ДОЛЖЕН:
+  - сначала строить план через **sequential-thinking** (до 5–7 шагов);
+  - при работе с внешними библиотеками просить **context7** (см. версии в `package.json` и `requirements.txt`);
+  - после крупных правок фронта предлагать e2e‑проверку через Playwright (`npx playwright test`).
+
+## PLAYWRIGHT / E2E
+- Основной config: `frontend/playwright.config.ts` (baseURL `http://localhost:5173`).
+- Тесты:
+  - `tests/e2e/basic.spec.ts` — проверка, что фронт поднимается и `#root` виден.
+  - `tests/e2e/auth.spec.ts` — проверка формы входа/регистрации.
+- При изменении аутентификации, меню, главного экрана анализа — запускать Playwright‑тесты.
+
+## LLM / OLLAMA MODELS
+- Базовая модель анализа: `qwen2.5-coder:7b`, задаётся через `TENDER_OLLAMA_MODEL`.
+- Лёгкий fallback: `qwen2.5:0.5b`.
+- Нежелательно распыляться на много моделей (llama3, mistral), если нет продуктовой причины.
+- Все вызовы модели должны проходить через единый клиент (`llm_client.py` или helpers в `main.py`).
+
+## PRODUCT RULES (REMINDER)
+- Любой анализ (один документ, пакет, деталка) начинается с **DEAL BREAKERS**.
+- Любой риск содержит:
+  - деньги (рубли) ИЛИ
+  - юр‑угрозу ИЛИ
+  - конкретное действие (НЕ участвовать / жалоба / запрос разъяснений).
+- Отсутствие данных = риск → интерфейс явно показывает «Данные не найдены — возможен скрытый риск».
+- Если директор не может принять решение за 30 секунд — экран считается проваленным.
+
+## HOW TO TALK TO ASSISTANT IN THIS REPO
+- «Разбери, почему не запускается X, используй sequential thinking» — ассистент обязан построить план.
+- «Используй context7 для FastAPI / LangChain / Ollama» — ассистент подтягивает актуальную документацию.
+- «Проверь фронт через Playwright» — ассистент либо запускает `npx playwright test` (через инструменты), либо даёт точные команды.
+
+

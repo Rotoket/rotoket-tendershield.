@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { FileText, Download, PenTool, CheckSquare, X, Loader2, Copy, Unlock, AlertTriangle } from 'lucide-react';
 import { logEvent } from '../utils/logger';
+import { UserDecision } from '../types';
+import { isActionAllowed, getActionBlockedMessage, type ActionType } from '../utils/decisionRules';
 import {
     ProtocolRowForm,
     ViolationForm,
@@ -15,6 +17,7 @@ interface DocumentGeneratorProps {
     tenderNumber?: string;
     customer?: string;
   };
+  decision?: UserDecision;
 }
 
 // Хелпер для отладочного логирования
@@ -34,7 +37,22 @@ const debugLog = (location: string, message: string, data: any = {}) => {
     }).catch(() => {});
 };
 
-const DocumentGenerator: React.FC<DocumentGeneratorProps> = ({ initialData }) => {
+const DocumentGenerator: React.FC<DocumentGeneratorProps> = ({ initialData, decision: decisionProp }) => {
+    // Decision должен приходить из App.tsx (единственный источник истины)
+    // localStorage используется ТОЛЬКО как fallback для legacy-совместимости
+    const getDecision = (): UserDecision | null => {
+        // Приоритет: пропс из App.tsx
+        if (decisionProp) return decisionProp;
+        // Fallback: localStorage (только для legacy, не primary)
+        try {
+            const stored = localStorage.getItem('last_user_decision');
+            return stored ? JSON.parse(stored) : null;
+        } catch {
+            return null;
+        }
+    };
+    
+    const [decision] = useState<UserDecision | null>(getDecision());
     // #region agent log
     debugLog('DocumentGenerator.tsx:init', 'DocumentGenerator initialized', {
         hasInitialData: !!initialData,
@@ -80,20 +98,27 @@ const DocumentGenerator: React.FC<DocumentGeneratorProps> = ({ initialData }) =>
             : [{ point: '', argument: '', law: '' }]
     );
 
+    // Определяем доступность инструментов на основе решения
+    const isProtocolAllowed = isActionAllowed(decision, 'generator_protocol');
+    const isComplaintAllowed = isActionAllowed(decision, 'generator_refusal');
+    const isGeneratorDisabled = decision?.decision === 'postpone' || (!decision && !isProtocolAllowed && !isComplaintAllowed);
+
     const tools = [
         {
             id: 'protocol',
             title: 'Протокол разногласий',
             desc: 'Генерация таблицы разногласий с автоматическим юридическим обоснованием.',
             icon: FileText,
+            allowed: isProtocolAllowed,
         },
         {
             id: 'complaint',
             title: 'Жалоба в ФАС',
             desc: 'Автоматическая генерация текста жалобы с ссылками на практику ФАС.',
             icon: PenTool,
+            allowed: isComplaintAllowed,
         },
-    ];
+    ].filter(tool => tool.allowed);
 
     // Автоматически открываем протокол, если есть данные из анализа
     useEffect(() => {
@@ -108,6 +133,8 @@ const DocumentGenerator: React.FC<DocumentGeneratorProps> = ({ initialData }) =>
             logEvent('DocumentGenerator', 'Автоматически открыт протокол разногласий с данными из анализа', 'info');
         }
     }, [initialData]);
+    
+    // ❌ Убрано: слушание localStorage (decision должен приходить из App.tsx)
 
     const closeTool = () => {
         logEvent('DocumentGenerator', 'Закрыта модалка генератора документов');
@@ -155,6 +182,7 @@ const DocumentGenerator: React.FC<DocumentGeneratorProps> = ({ initialData }) =>
             subject: protocolSubject,
             ref: protocolRef,
             rows: protocolRows,
+            decision: decision,
         });
     };
 
@@ -167,18 +195,33 @@ const DocumentGenerator: React.FC<DocumentGeneratorProps> = ({ initialData }) =>
             topic: complaintTopic,
             ref: complaintRef,
             violations,
+            decision: decision,
         });
     };
 
     const handleGenerate = async (kind: 'protocol' | 'complaint') => {
+        // Проверяем наличие решения
+        if (!decision) {
+            logEvent('DocumentGenerator', 'Попытка генерации отчёта без решения', 'warn');
+            return;
+        }
+
         try {
             setIsGenerating(true);
+            
+            logEvent('Report', 'report_generation_started', 'info', {
+                decision: decision.decision,
+                reportType: kind === 'protocol' ? 'protocol' : 'complaint',
+                source: 'DocumentGenerator',
+            });
+            
             logEvent(
                 'DocumentGenerator',
                 kind === 'protocol'
                     ? 'Нажата кнопка "Сформировать протокол разногласий"'
                     : 'Нажата кнопка "Сформировать жалобу в ФАС"',
             );
+            
             let text = '';
             if (kind === 'protocol') {
                 text = generateProtocolText();
@@ -187,6 +230,13 @@ const DocumentGenerator: React.FC<DocumentGeneratorProps> = ({ initialData }) =>
             }
             setGeneratedResult(text);
             setGeneratedKind(kind);
+            
+            logEvent('Report', 'report_generated', 'info', {
+                decision: decision.decision,
+                reportType: kind === 'protocol' ? 'protocol' : 'complaint',
+                source: 'DocumentGenerator',
+            });
+            
             logEvent(
                 'DocumentGenerator',
                 kind === 'protocol'
@@ -227,46 +277,131 @@ const DocumentGenerator: React.FC<DocumentGeneratorProps> = ({ initialData }) =>
         }
     };
 
+    // Логируем блокировку/разрешение действий при изменении decision
+    useEffect(() => {
+        if (decision) {
+            const protocolAllowed = isActionAllowed(decision, 'generator_protocol');
+            const complaintAllowed = isActionAllowed(decision, 'generator_refusal');
+            
+            if (protocolAllowed) {
+                logEvent('Decision', 'decision_action_allowed', 'info', {
+                    decision: decision.decision,
+                    action: 'generator_protocol',
+                    source: 'DocumentGenerator',
+                });
+            } else {
+                logEvent('Decision', 'decision_action_blocked', 'info', {
+                    decision: decision.decision,
+                    action: 'generator_protocol',
+                    source: 'DocumentGenerator',
+                });
+            }
+            
+            if (complaintAllowed) {
+                logEvent('Decision', 'decision_action_allowed', 'info', {
+                    decision: decision.decision,
+                    action: 'generator_refusal',
+                    source: 'DocumentGenerator',
+                });
+            } else {
+                logEvent('Decision', 'decision_action_blocked', 'info', {
+                    decision: decision.decision,
+                    action: 'generator_refusal',
+                    source: 'DocumentGenerator',
+                });
+            }
+        } else {
+            // Если решения нет - логируем блокировку
+            logEvent('Decision', 'decision_action_blocked', 'info', {
+                decision: undefined,
+                action: 'generator',
+                source: 'DocumentGenerator',
+            });
+        }
+    }, [decision]);
+
+    // Если решение не зафиксировано — показываем экран блокировки
+    if (!decision) {
+        return (
+            <div className="animate-fade-in relative h-full flex flex-col items-center justify-center">
+                <div className="bg-[#1a1f2e] border border-[#2a3441] rounded-2xl p-8 max-w-md text-center">
+                    <AlertTriangle size={48} className="text-slate-400 mx-auto mb-4" />
+                    <h2 className="text-2xl font-bold text-white mb-4">Сначала зафиксируйте решение</h2>
+                    <p className="text-slate-400 text-sm mb-4">
+                        Для использования генератора документов необходимо зафиксировать решение по тендеру в режиме анализа.
+                    </p>
+                    <p className="text-xs text-slate-500">
+                        Вернитесь к анализу и зафиксируйте решение в режиме директора.
+                    </p>
+                </div>
+            </div>
+        );
+    }
+
+    // Если генератор недоступен по другим причинам (например, решение = postpone)
+    if (isGeneratorDisabled) {
+        const blockedMessage = getActionBlockedMessage(decision, 'generator');
+        return (
+            <div className="animate-fade-in relative h-full flex flex-col items-center justify-center">
+                <div className="bg-[#1a1f2e] border border-[#2a3441] rounded-2xl p-8 max-w-md text-center">
+                    <AlertTriangle size={48} className="text-slate-400 mx-auto mb-4" />
+                    <h2 className="text-2xl font-bold text-white mb-4">Генератор недоступен</h2>
+                    <p className="text-slate-400 text-sm">{blockedMessage}</p>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="animate-fade-in relative h-full flex flex-col">
             <div className="mb-6 flex justify-between items-center">
                 <div>
                     <h2 className="text-3xl font-bold text-white mb-2">Инструментарий</h2>
                     <p className="text-slate-400">Генерация документов с поддержкой AI</p>
+                    {decision?.decision === 'participate_with_conditions' && (
+                        <p className="text-xs text-yellow-400 mt-1">⚠️ Генерация с учётом условий участия</p>
+                    )}
                 </div>
                 <div className="flex items-center gap-2 bg-[#00d4ff]/10 text-[#00d4ff] px-3 py-1.5 rounded-full text-xs font-bold border border-[#00d4ff]/20">
                     <Unlock size={14} /> PRO Функции активны
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {tools.map(tool => (
-                    <div
-                        key={tool.id}
-                        onClick={() => {
-                            setActiveTool(tool.id);
-                            logEvent(
-                                'DocumentGenerator',
-                                tool.id === 'protocol'
-                                    ? 'Открыт инструмент "Протокол разногласий"'
-                                    : 'Открыт инструмент "Жалоба в ФАС"',
-                            );
-                        }}
-                        className="border rounded-2xl p-6 transition-all group cursor-pointer relative overflow-hidden bg-[#1a1f2e] border-[#2a3441] hover:border-[#00d4ff]"
-                    >
-                        <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-4 transition-transform group-hover:scale-110 bg-[#0f1419] text-[#00d4ff] border border-[#2a3441]">
-                            <tool.icon size={24} />
+            {tools.length === 0 ? (
+                <div className="bg-[#1a1f2e] border border-[#2a3441] rounded-2xl p-6 text-center">
+                    <AlertTriangle size={32} className="text-slate-400 mx-auto mb-3" />
+                    <p className="text-slate-400 text-sm">{getActionBlockedMessage(decision, 'generator')}</p>
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {tools.map(tool => (
+                        <div
+                            key={tool.id}
+                            onClick={() => {
+                                setActiveTool(tool.id);
+                                logEvent(
+                                    'DocumentGenerator',
+                                    tool.id === 'protocol'
+                                        ? 'Открыт инструмент "Протокол разногласий"'
+                                        : 'Открыт инструмент "Жалоба в ФАС"',
+                                );
+                            }}
+                            className="border rounded-2xl p-6 transition-all group cursor-pointer relative overflow-hidden bg-[#1a1f2e] border-[#2a3441] hover:border-[#00d4ff]"
+                        >
+                            <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-4 transition-transform group-hover:scale-110 bg-[#0f1419] text-[#00d4ff] border border-[#2a3441]">
+                                <tool.icon size={24} />
+                            </div>
+
+                            <h3 className="text-xl font-bold mb-2 text-white">{tool.title}</h3>
+                            <p className="text-slate-400 text-sm leading-relaxed mb-6 h-10">{tool.desc}</p>
+
+                            <button className="w-full py-2 rounded-lg text-sm font-bold border transition-all bg-[#0f1419] border-[#2a3441] text-white group-hover:bg-[#00d4ff] group-hover:text-[#0f1419] group-hover:border-[#00d4ff]">
+                                Открыть инструмент
+                            </button>
                         </div>
-
-                        <h3 className="text-xl font-bold mb-2 text-white">{tool.title}</h3>
-                        <p className="text-slate-400 text-sm leading-relaxed mb-6 h-10">{tool.desc}</p>
-
-                        <button className="w-full py-2 rounded-lg text-sm font-bold border transition-all bg-[#0f1419] border-[#2a3441] text-white group-hover:bg-[#00d4ff] group-hover:text-[#0f1419] group-hover:border-[#00d4ff]">
-                            Открыть инструмент
-                        </button>
-                    </div>
-                ))}
-            </div>
+                    ))}
+                </div>
+            )}
 
             {/* MODALS */}
             {activeTool && (
@@ -335,6 +470,19 @@ const DocumentGenerator: React.FC<DocumentGeneratorProps> = ({ initialData }) =>
                                                 />
                                             </div>
                                         </div>
+
+                                        {/* Обязательный блок условий для participate_with_conditions */}
+                                        {decision?.decision === 'participate_with_conditions' && (
+                                            <div className="mb-4 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <AlertTriangle size={16} className="text-yellow-400" />
+                                                    <h5 className="text-xs font-semibold text-yellow-400">Условия участия</h5>
+                                                </div>
+                                                <p className="text-xs text-slate-300 mb-2">
+                                                    При решении "Участвовать с условиями" необходимо явно указать условия в протоколе разногласий.
+                                                </p>
+                                            </div>
+                                        )}
 
                                         <div className="flex items-center justify-between mb-2">
                                             <h5 className="text-xs font-semibold text-slate-200">Таблица разногласий</h5>
@@ -538,13 +686,21 @@ const DocumentGenerator: React.FC<DocumentGeneratorProps> = ({ initialData }) =>
                                         <CheckSquare size={16} className="text-[#00d4ff]" /> Предпросмотр черновика
                                     </h4>
                                     <div className="flex gap-2">
+                                        {!decision && (
+                                            <div className="mb-2 p-2 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+                                                <p className="text-[10px] text-amber-400">
+                                                    ⚠️ Отчёт формируется после фиксации решения
+                                                </p>
+                                            </div>
+                                        )}
                                         <button
                                             type="button"
                                             onClick={() =>
                                                 handleGenerate(activeTool === 'protocol' ? 'protocol' : 'complaint')
                                             }
-                                            disabled={isGenerating}
-                                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#00d4ff] text-[#0f1419] text-xs font-semibold hover:bg-[#06b6d4] disabled:opacity-60"
+                                            disabled={isGenerating || !decision}
+                                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#00d4ff] text-[#0f1419] text-xs font-semibold hover:bg-[#06b6d4] disabled:opacity-60 disabled:cursor-not-allowed"
+                                            title={!decision ? 'Отчёт фиксирует принятое решение' : undefined}
                                         >
                                             {isGenerating ? (
                                                 <Loader2 size={14} className="animate-spin" />
@@ -553,6 +709,11 @@ const DocumentGenerator: React.FC<DocumentGeneratorProps> = ({ initialData }) =>
                                             )}
                                             Сформировать
                                         </button>
+                                        {decision && (
+                                            <p className="mt-1 text-[10px] text-slate-400 text-center">
+                                                Отчёт фиксирует принятое решение
+                                            </p>
+                                        )}
                                         <button
                                             type="button"
                                             onClick={handleCopy}
@@ -577,7 +738,9 @@ const DocumentGenerator: React.FC<DocumentGeneratorProps> = ({ initialData }) =>
                                         generatedResult
                                     ) : (
                                         <span className="text-slate-500">
-                                            Заполните поля слева и нажмите «Сформировать», чтобы увидеть черновик документа.
+                                            {decision 
+                                                ? 'Заполните поля слева и нажмите «Сформировать», чтобы увидеть черновик документа.'
+                                                : 'Сначала зафиксируйте решение по тендеру, затем сформируйте отчёт.'}
                                         </span>
                                     )}
                                 </div>

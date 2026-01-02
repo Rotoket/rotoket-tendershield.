@@ -23,8 +23,8 @@ const AIConsultantIntro: React.FC<AIConsultantIntroProps> = ({
           bgColor: 'bg-[#ff4444]/10',
           borderColor: 'border-[#ff4444]/30',
           iconColor: 'text-[#ff4444]',
-          title: 'ВЫСОКИЙ РИСК',
-          subtitle: 'Рекомендуем воздержаться от участия',
+          title: 'Высокая совокупная риск-нагрузка',
+          subtitle: 'Условия участия при текущих параметрах несут недопустимую риск-нагрузку',
         };
       case 'CAUTION':
         return {
@@ -32,8 +32,8 @@ const AIConsultantIntro: React.FC<AIConsultantIntroProps> = ({
           bgColor: 'bg-[#f59e0b]/10',
           borderColor: 'border-[#f59e0b]/30',
           iconColor: 'text-[#f59e0b]',
-          title: 'ТРЕБУЕТ ВНИМАНИЯ',
-          subtitle: 'Участие возможно при условии устранения рисков',
+          title: 'Требуется повышенное внимание',
+          subtitle: 'Участие допускает управленческую нагрузку по контролю ключевых рисков',
         };
       case 'PARTICIPATE':
         return {
@@ -41,8 +41,8 @@ const AIConsultantIntro: React.FC<AIConsultantIntroProps> = ({
           bgColor: 'bg-[#00e648]/10',
           borderColor: 'border-[#00e648]/30',
           iconColor: 'text-[#00e648]',
-          title: 'БЕЗОПАСНО',
-          subtitle: 'Участие рекомендуется',
+          title: 'Риск в допустимом диапазоне',
+          subtitle: 'Условия участия в целом управляемы с точки зрения рисков',
         };
       default:
         return {
@@ -50,8 +50,8 @@ const AIConsultantIntro: React.FC<AIConsultantIntroProps> = ({
           bgColor: 'bg-[#f59e0b]/10',
           borderColor: 'border-[#f59e0b]/30',
           iconColor: 'text-[#f59e0b]',
-          title: 'ТРЕБУЕТ АНАЛИЗА',
-          subtitle: 'Необходима дополнительная проверка',
+          title: 'Требуется дополнительное уточнение',
+          subtitle: 'Необходимо запросить дополнительную аналитическую справку по ключевым рискам',
         };
     }
   };
@@ -77,7 +77,9 @@ const AIConsultantIntro: React.FC<AIConsultantIntroProps> = ({
             <div className="flex items-center gap-2 mb-1">
               <h3 className="text-lg font-bold text-white">{config.title}</h3>
               <div className="px-2 py-0.5 bg-[#1a1f2e] border border-[#2a3441] rounded">
-                <span className="text-xs font-bold text-[#00d4ff]">Индекс: {score}/100</span>
+                <span className="text-xs font-bold text-[#00d4ff]">
+                  Индекс управленческой нагрузки: {score}/100
+                </span>
               </div>
             </div>
             <p className="text-slate-400 text-xs">{config.subtitle}</p>
@@ -90,12 +92,10 @@ const AIConsultantIntro: React.FC<AIConsultantIntroProps> = ({
             <Bot size={16} className="text-[#00d4ff] mt-0.5 flex-shrink-0" />
             <div className="flex-1">
               <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                МНЕНИЕ ТЕНДЕРНОГО СОВЕТНИКА
+                ОБОСНОВАНИЕ АНАЛИТИЧЕСКОЙ ОЦЕНКИ (НЕ ЯВЛЯЕТСЯ РЕШЕНИЕМ)
               </h4>
               <p className="text-white text-sm leading-relaxed whitespace-pre-line line-clamp-4">
-                {displayText.startsWith('Привет') || displayText.startsWith('Я') 
-                  ? displayText 
-                  : `Привет! Я изучил этот контракт. ${displayText}`}
+                {displayText}
               </p>
             </div>
           </div>

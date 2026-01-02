@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { ChevronDown, ChevronUp, AlertTriangle, AlertOctagon, Info, Lightbulb, FileText, BookOpen, ExternalLink } from 'lucide-react';
+import React, { useState } from 'react';
+import { ChevronDown, ChevronUp, AlertTriangle, AlertOctagon, Info, Lightbulb, BookOpen, ExternalLink } from 'lucide-react';
+import ExplanationPopover from '../ExplanationPopover';
 
 interface LegalReference {
   id: string;
@@ -9,20 +10,30 @@ interface LegalReference {
   summary: string;
 }
 
+interface EvidenceItem {
+  document_name: string;
+  page_reference?: string | null;
+  section_reference?: string | null;
+  quote: string;
+}
+
 interface RiskItem {
   title: string;
   description: string;
   severity: 'high' | 'medium' | 'low' | string;
+  risk_type?: 'CRITICAL' | 'POTENTIAL' | 'FORMAL'; // Устаревшее, используйте severity_level
+  severity_level?: 'DEAL_BREAKER' | 'CONTROLLED_RISK' | 'MARKET_NOISE'; // Трёхуровневая модель
+  confidence_level?: number; // 0-100, уровень уверенности в значимости риска
   quote?: string;
+  evidence?: EvidenceItem[];
   recommendation?: string;
   legalReferences?: LegalReference[]; // 🆕 Ссылки на нормы из Базы знаний
 }
 
 interface RiskNarrativeProps {
   risks: RiskItem[];
-  dealBreakers?: string[];
-  onGenerateProtocol?: (dealBreakers: string[]) => void; // 🆕 Интеграция с Генератором
   onViewKnowledge?: (query: string) => void; // 🆕 Интеграция с Базой знаний
+  decisionRecorded?: boolean; // Зафиксировано ли решение
 }
 
 // Хелпер для отладочного логирования
@@ -42,12 +53,10 @@ const debugLog = (location: string, message: string, data: any = {}) => {
   }).catch(() => { });
 };
 
-const RiskNarrative: React.FC<RiskNarrativeProps> = ({ risks, dealBreakers, onGenerateProtocol, onViewKnowledge }) => {
+const RiskNarrative: React.FC<RiskNarrativeProps> = ({ risks, onViewKnowledge, decisionRecorded = false }) => {
   // #region agent log
   debugLog('RiskNarrative.tsx:init', 'RiskNarrative initialized', {
     risksCount: risks.length,
-    dealBreakersCount: dealBreakers?.length || 0,
-    hasOnGenerateProtocol: !!onGenerateProtocol,
     hasOnViewKnowledge: !!onViewKnowledge
   });
   // #endregion
@@ -63,7 +72,83 @@ const RiskNarrative: React.FC<RiskNarrativeProps> = ({ risks, dealBreakers, onGe
     setExpandedRisks(newExpanded);
   };
 
-  const getSeverityConfig = (severity: string) => {
+  const getSeverityLevelConfig = (severityLevel?: string) => {
+    if (!severityLevel) return null;
+    const upper = severityLevel.toUpperCase();
+    switch (upper) {
+      case 'DEAL_BREAKER':
+        return {
+          label: 'КРИТИЧЕСКИЙ СТОП-ФАКТОР',
+          color: 'text-[#ff4444]',
+          bgColor: 'bg-[#ff4444]/10',
+          borderColor: 'border-[#ff4444]/30',
+          description: 'Критический фактор, блокирующий участие',
+        };
+      case 'CONTROLLED_RISK':
+        return {
+          label: 'КОНТРОЛИРУЕМЫЙ РИСК',
+          color: 'text-[#f59e0b]',
+          bgColor: 'bg-[#f59e0b]/10',
+          borderColor: 'border-[#f59e0b]/30',
+          description: 'Управляемый риск, требует контроля',
+        };
+      case 'MARKET_NOISE':
+        return {
+          label: 'РЫНОЧНЫЙ ФАКТОР (НЕ КРИТИЧЕН)',
+          color: 'text-[#64748b]',
+          bgColor: 'bg-[#64748b]/10',
+          borderColor: 'border-[#64748b]/30',
+          description: 'Рыночный шум, не влияет на решение',
+        };
+      default:
+        return null;
+    }
+  };
+
+  const getRiskTypeConfig = (riskType?: string) => {
+    if (!riskType) return null;
+    const upper = riskType.toUpperCase();
+    switch (upper) {
+      case 'CRITICAL':
+        return {
+          label: 'Подтверждённый риск',
+          color: 'text-[#ff4444]',
+          bgColor: 'bg-[#ff4444]/10',
+          description: 'Реальное противоречие в условиях',
+        };
+      case 'POTENTIAL':
+        return {
+          label: 'Потенциальный риск',
+          color: 'text-[#f59e0b]',
+          bgColor: 'bg-[#f59e0b]/10',
+          description: 'Требует проверки влияния на условия',
+        };
+      case 'FORMAL':
+        return {
+          label: 'Формальный след',
+          color: 'text-[#64748b]',
+          bgColor: 'bg-[#64748b]/10',
+          description: 'Шаблонные ссылки, не влияют на условия',
+        };
+      default:
+        return null;
+    }
+  };
+
+  const getSeverityConfig = (severity: string, riskType?: string) => {
+    // Если есть risk_type, используем его для определения цвета
+    const typeConfig = getRiskTypeConfig(riskType);
+    if (typeConfig) {
+      return {
+        color: typeConfig.color,
+        bgColor: typeConfig.bgColor,
+        borderColor: typeConfig.color.replace('text-', 'border-').replace('[#', '[#').replace(']', ']/30'),
+        icon: riskType === 'CRITICAL' ? AlertOctagon : AlertTriangle,
+        label: typeConfig.label,
+      };
+    }
+    
+    // Fallback на старую логику по severity
     const upper = severity.toUpperCase();
     if (upper === 'HIGH' || upper === 'CRITICAL') {
       return {
@@ -92,68 +177,21 @@ const RiskNarrative: React.FC<RiskNarrativeProps> = ({ risks, dealBreakers, onGe
     };
   };
 
-  if (risks.length === 0 && (!dealBreakers || dealBreakers.length === 0)) {
+  if (risks.length === 0) {
     return null;
   }
 
-  const totalDealBreakers = dealBreakers?.length || 0;
   const totalRisks = risks.length;
 
   return (
     <div className="space-y-4">
-      {/* Deal Breakers - всегда показываем первыми */}
-      {dealBreakers && dealBreakers.length > 0 && (
-        <div className="bg-[#ff4444]/10 border border-[#ff4444]/30 rounded-xl p-4 shadow-lg">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <AlertOctagon size={20} className="text-[#ff4444]" />
-              <h3 className="text-lg font-bold text-white">🚩 КРИТИЧЕСКИЕ СТОП-ФАКТОРЫ</h3>
-            </div>
-            <span className="px-2 py-0.5 bg-[#ff4444] text-[#0f1419] text-[10px] font-bold rounded">
-              Найдено: {totalDealBreakers}
-            </span>
-          </div>
-          <div className="space-y-2">
-            {dealBreakers.map((breaker, idx) => (
-              <div
-                key={idx}
-                className="bg-[#0f1419]/50 border border-[#ff4444]/20 rounded-lg p-3 flex items-start gap-2"
-              >
-                <div className="w-1.5 h-1.5 rounded-full bg-[#ff4444] mt-1.5 flex-shrink-0"></div>
-                <p className="text-white text-sm leading-relaxed flex-1">{breaker}</p>
-              </div>
-            ))}
-          </div>
-          {/* Кнопка генерации протокола разногласий */}
-          {onGenerateProtocol && (
-            <div className="mt-4 pt-4 border-t border-[#ff4444]/20">
-              <button
-                onClick={() => {
-                  // #region agent log
-                  debugLog('RiskNarrative.tsx:generateProtocol', 'Generate protocol button clicked', {
-                    dealBreakersCount: dealBreakers.length,
-                    dealBreakers: dealBreakers
-                  });
-                  // #endregion
-                  onGenerateProtocol(dealBreakers);
-                }}
-                className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-[#00d4ff]/10 hover:bg-[#00d4ff]/20 text-[#00d4ff] border border-[#00d4ff]/30 rounded-xl text-sm font-bold transition-all hover:shadow-[0_0_15px_rgba(0,212,255,0.3)]"
-              >
-                <FileText size={18} />
-                Сформировать протокол разногласий
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-
       {/* Риски */}
       {risks.length > 0 && (
         <div className="space-y-3">
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-xl font-bold text-white flex items-center gap-2">
               <AlertTriangle size={24} className="text-[#f59e0b]" />
-              Анализ рисков
+              Пояснение ключевых рисков для директора
             </h3>
             <span className="px-3 py-1 bg-[#f59e0b]/20 text-[#f59e0b] border border-[#f59e0b]/30 text-xs font-bold rounded-lg">
               Найдено: {totalRisks}
@@ -162,8 +200,20 @@ const RiskNarrative: React.FC<RiskNarrativeProps> = ({ risks, dealBreakers, onGe
 
           {risks.map((risk, index) => {
             const isExpanded = expandedRisks.has(index);
-            const severityConfig = getSeverityConfig(risk.severity);
+            // Приоритет: severity_level > risk_type > severity
+            const severityLevelConfig = getSeverityLevelConfig(risk.severity_level);
+            const riskTypeConfig = getRiskTypeConfig(risk.risk_type);
+            const severityConfig = severityLevelConfig 
+              ? {
+                  color: severityLevelConfig.color,
+                  bgColor: severityLevelConfig.bgColor,
+                  borderColor: severityLevelConfig.borderColor || 'border-[#2a3441]',
+                  icon: risk.severity_level === 'DEAL_BREAKER' ? AlertOctagon : AlertTriangle,
+                  label: severityLevelConfig.label,
+                }
+              : getSeverityConfig(risk.severity || 'medium', risk.risk_type);
             const SeverityIcon = severityConfig.icon;
+            const confidenceLevel = risk.confidence_level ?? 100;
 
             return (
               <div
@@ -179,13 +229,27 @@ const RiskNarrative: React.FC<RiskNarrativeProps> = ({ risks, dealBreakers, onGe
                   <div className="flex items-center gap-2 flex-1">
                     <SeverityIcon size={16} className={severityConfig.color} />
                     <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-0.5">
+                      <div className="flex items-center gap-2 mb-0.5 flex-wrap">
                         <h4 className="font-bold text-white text-sm">{risk.title}</h4>
-                        <span
-                          className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${severityConfig.borderColor} ${severityConfig.color}`}
-                        >
-                          {severityConfig.label}
-                        </span>
+                        {severityLevelConfig && (
+                          <span
+                            className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${severityConfig.borderColor} ${severityConfig.color}`}
+                          >
+                            {severityConfig.label}
+                          </span>
+                        )}
+                        {!severityLevelConfig && riskTypeConfig && (
+                          <span
+                            className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${severityConfig.borderColor} ${severityConfig.color}`}
+                          >
+                            {severityConfig.label}
+                          </span>
+                        )}
+                        {risk.confidence_level !== undefined && (
+                          <span className="text-[9px] text-slate-400 px-1.5 py-0.5">
+                            Уверенность: {confidenceLevel}%
+                          </span>
+                        )}
                       </div>
                       {!isExpanded && (
                         <p className="text-slate-400 text-xs line-clamp-1">{risk.description}</p>
@@ -205,43 +269,99 @@ const RiskNarrative: React.FC<RiskNarrativeProps> = ({ risks, dealBreakers, onGe
                 {isExpanded && (
                   <div className="border-t border-[#2a3441] bg-[#0f1419]/50">
                     <div className="p-3 space-y-3">
-                      {/* Что это значит */}
-                      <div>
-                        <div className="flex items-center gap-2 mb-2">
-                          <Info size={16} className="text-[#00d4ff]" />
-                          <h5 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                            Что это значит
+                      {/* Упрощённое объяснение: 3 секции */}
+                      <div className="space-y-3">
+                        {/* 1. Суть (2 строки) */}
+                        <div>
+                          <h5 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
+                            Суть
                           </h5>
+                          <p className="text-white text-sm leading-relaxed">
+                            {risk.description?.split('\n')[0] || risk.description || 'Требует внимания при принятии решения.'}
+                          </p>
                         </div>
-                        <p className="text-white text-sm leading-relaxed">{risk.description}</p>
-                        {risk.quote && (
-                          <div className="mt-3 p-3 bg-[#1a1f2e] border-l-4 border-[#00d4ff] rounded">
-                            <p className="text-slate-300 text-xs italic">"{risk.quote}"</p>
+
+                        {/* 2. Опасно, если... */}
+                        {(risk.severity_level !== 'MARKET_NOISE' && risk.risk_type !== 'FORMAL') && (
+                          <div>
+                            <h5 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
+                              Опасно, если...
+                            </h5>
+                            <p className="text-white text-sm leading-relaxed">
+                              {risk.severity_level === 'DEAL_BREAKER'
+                                ? (risk.recommendation || 'Не устранены указанные условия. Участие может привести к существенным рискам.')
+                                : (risk.recommendation || 'Игнорируются условия, влияющие на финансовые или правовые обязательства.')}
+                            </p>
+                          </div>
+                        )}
+
+                        {/* 3. Можно игнорировать, если... */}
+                        {(risk.severity_level === 'MARKET_NOISE' || risk.risk_type === 'FORMAL') && (
+                          <div>
+                            <h5 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
+                              Можно игнорировать, если...
+                            </h5>
+                            <p className="text-white text-sm leading-relaxed">
+                              {risk.recommendation ||
+                                'Это типичный риск закупок, связанный с шаблонными формулировками. ' +
+                                'Не влияет на условия участия, оплаты или ответственности.'}
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Источник (цитата) */}
+                        {(risk.evidence && risk.evidence.length > 0) || risk.quote ? (
+                          <div className="bg-[#020617] border border-[#1e293b] rounded-xl p-3">
+                            <div className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
+                              Источник
+                            </div>
+                            {risk.evidence && risk.evidence.length > 0 ? (
+                              <div className="space-y-2">
+                                {risk.evidence.slice(0, 2).map((ev, evIdx) => (
+                                  <div key={evIdx} className="text-xs text-slate-300">
+                                    <div className="text-[11px] text-slate-400">
+                                      {ev.document_name}
+                                      {ev.page_reference ? ` · стр. ${ev.page_reference}` : ''}
+                                      {ev.section_reference ? ` · ${ev.section_reference}` : ''}
+                                    </div>
+                                    <div className="text-slate-200 mt-1 whitespace-pre-line">
+                                      {ev.quote}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <div className="text-xs text-slate-200 whitespace-pre-line">
+                                {risk.quote}
+                              </div>
+                            )}
+                          </div>
+                        ) : null}
+                        
+                        {/* Уровень уверенности */}
+                        {risk.confidence_level !== undefined && (
+                          <div className="mt-3 p-2 bg-[#1a1f2e] rounded border border-[#2a3441]">
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-xs text-slate-400">Степень уверенности:</span>
+                              <span className="text-xs font-bold text-white">{confidenceLevel}%</span>
+                            </div>
+                            <div className="w-full bg-[#0f1419] rounded-full h-1.5">
+                              <div
+                                className={`h-1.5 rounded-full ${severityConfig.color.replace('text-', 'bg-')}`}
+                                style={{ width: `${confidenceLevel}%` }}
+                              />
+                            </div>
                           </div>
                         )}
                       </div>
 
-                      {/* Почему это важно для вас */}
-                      <div>
-                        <div className="flex items-center gap-2 mb-2">
-                          <AlertTriangle size={16} className="text-[#f59e0b]" />
-                          <h5 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                            Почему это важно для вас
-                          </h5>
-                        </div>
-                        <p className="text-white text-sm leading-relaxed">
-                          {risk.recommendation ||
-                            'Этот риск может повлиять на вашу способность выполнить контракт или получить прибыль. Рекомендуем внимательно оценить последствия.'}
-                        </p>
-                      </div>
-
-                      {/* Мой совет */}
+                      {/* Управленческое основание */}
                       {risk.recommendation && (
                         <div className="bg-[#00d4ff]/10 border border-[#00d4ff]/30 rounded-xl p-4">
                           <div className="flex items-center gap-2 mb-2">
                             <Lightbulb size={16} className="text-[#00d4ff]" />
                             <h5 className="text-xs font-bold text-[#00d4ff] uppercase tracking-wider">
-                              Мой совет
+                              Основание для решения
                             </h5>
                           </div>
                           <p className="text-white text-sm leading-relaxed">{risk.recommendation}</p>
@@ -250,58 +370,59 @@ const RiskNarrative: React.FC<RiskNarrativeProps> = ({ risks, dealBreakers, onGe
 
                       {/* Релевантные нормы из Базы знаний */}
                       {risk.legalReferences && risk.legalReferences.length > 0 && (
-                        <div className="bg-[#1a1f2e] border border-[#2a3441] rounded-xl p-4">
-                          <div className="flex items-center justify-between mb-3">
+                        <div className="bg-[#020617] border border-[#1e293b] rounded-xl p-3">
+                          <div className="flex items-center justify-between mb-2">
                             <div className="flex items-center gap-2">
-                              <BookOpen size={16} className="text-[#00d4ff]" />
-                              <h5 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                                Релевантные нормы
+                              <BookOpen size={16} className="text-slate-300" />
+                              <h5 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+                                Релевантные нормы и разъяснения
                               </h5>
                             </div>
                             {onViewKnowledge && (
                               <button
+                                type="button"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  onViewKnowledge(risk.title);
+                                  const query = risk.legalReferences?.map((r) => r.lawReference).join(', ');
+                                  if (query) {
+                                    onViewKnowledge(query);
+                                  }
                                 }}
-                                className="text-xs text-[#00d4ff] hover:text-[#06b6d4] flex items-center gap-1 transition-colors"
+                                className="flex items-center gap-1 px-2 py-1 text-[11px] font-semibold text-[#00d4ff] hover:text-white"
                               >
+                                Открыть в Базе знаний
                                 <ExternalLink size={12} />
-                                Найти больше
                               </button>
                             )}
                           </div>
-                          <div className="space-y-2">
-                            {risk.legalReferences.map((ref) => (
-                              <div
-                                key={ref.id}
-                                className="bg-[#0f1419]/50 border border-[#2a3441] rounded-lg p-3"
-                              >
-                                <div className="flex items-start justify-between mb-1">
-                                  <span className="text-xs font-semibold text-white">{ref.title}</span>
-                                  <span className="text-[10px] text-[#00d4ff] ml-2">{ref.lawReference}</span>
-                                </div>
-                                <div className="text-[10px] text-slate-400 mb-1">{ref.category}</div>
-                                <p className="text-[11px] text-slate-300 leading-relaxed">{ref.summary}</p>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Кнопка поиска в Базе знаний, если нет релевантных норм */}
-                      {(!risk.legalReferences || risk.legalReferences.length === 0) && onViewKnowledge && (
-                        <div className="bg-[#1a1f2e]/50 border border-[#2a3441] rounded-xl p-3">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onViewKnowledge(risk.title);
-                            }}
-                            className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-[#00d4ff]/10 hover:bg-[#00d4ff]/20 text-[#00d4ff] border border-[#00d4ff]/30 rounded-lg text-xs font-medium transition-all"
-                          >
-                            <BookOpen size={14} />
-                            Найти релевантные нормы в Базе знаний
-                          </button>
+                          <ul className="space-y-2">
+                            {risk.legalReferences.map((ref) => {
+                              // Извлекаем код закона из ссылки (например, "44-ФЗ" из "ФЗ-44" или "44-ФЗ")
+                              const lawCodeMatch = ref.lawReference.match(/(\d+)-?ФЗ/i);
+                              const lawCode = lawCodeMatch ? `${lawCodeMatch[1]}-ФЗ` : undefined;
+                              
+                              return (
+                                <li key={ref.id} className="text-xs text-slate-300">
+                                  <div className="flex items-center gap-1 font-semibold text-slate-100">
+                                    <span>{ref.lawReference} — {ref.title}</span>
+                                    {lawCode && (
+                                      <ExplanationPopover
+                                        question={`Что означает ссылка на ${lawCode} в контексте этого риска?`}
+                                        context={{ lawCode }}
+                                        sourceBlock="risk"
+                                        contourState={decisionRecorded ? 'after_decision' : 'before_decision'}
+                                        decisionRecorded={decisionRecorded}
+                                        position="right"
+                                      >
+                                        <span className="text-[10px] text-slate-500">· пояснить</span>
+                                      </ExplanationPopover>
+                                    )}
+                                  </div>
+                                  <div className="text-slate-400">{ref.summary}</div>
+                                </li>
+                              );
+                            })}
+                          </ul>
                         </div>
                       )}
                     </div>
@@ -317,4 +438,3 @@ const RiskNarrative: React.FC<RiskNarrativeProps> = ({ risks, dealBreakers, onGe
 };
 
 export default RiskNarrative;
-

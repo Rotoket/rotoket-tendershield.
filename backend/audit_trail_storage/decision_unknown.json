@@ -1,0 +1,79 @@
+{
+  "decision_id": "D-828E071A",
+  "derived_from": "ES-F1D6C16E",
+  "decision": "PARTICIPATE",
+  "decision_preview": {
+    "decision": "PARTICIPATE",
+    "why": [
+      "Критических стоп-факторов не выявлено",
+      "Обнаружено 0 управляемых рисков",
+      "Условия участия стандартные"
+    ],
+    "main_risk": null,
+    "management_load": {
+      "sources": [
+        "Количество противоречий: 0",
+        "Управляемых рисков: 0",
+        "Evidence с низкой уверенностью: 0"
+      ],
+      "contradictions_count": 0,
+      "low_confidence_evidence_count": 0,
+      "non_standard_conditions": [],
+      "manual_verification_required": []
+    },
+    "risk_mitigation": null,
+    "deal_breakers": [],
+    "controlled_risks": [],
+    "contradictions": [],
+    "decision_graph": null
+  },
+  "decision_graph": {
+    "graph_id": "GRAPH-3AF9AD00",
+    "nodes": [
+      {
+        "node_id": "E-FE74427F",
+        "node_type": "evidence",
+        "content": {
+          "fact": "Excel файл содержит 1 листов",
+          "classification": "MARKET_NOISE"
+        },
+        "connections": []
+      },
+      {
+        "node_id": "LOAD-001",
+        "node_type": "load_factor",
+        "content": {
+          "sources": [
+            "Количество противоречий: 0",
+            "Управляемых рисков: 0",
+            "Evidence с низкой уверенностью: 0"
+          ],
+          "contradictions_count": 0
+        },
+        "connections": []
+      },
+      {
+        "node_id": "DECISION-001",
+        "node_type": "decision",
+        "content": {
+          "decision": "PARTICIPATE",
+          "why": [
+            "Критических стоп-факторов не выявлено",
+            "Обнаружено 0 управляемых рисков",
+            "Условия участия стандартные"
+          ]
+        },
+        "connections": [
+          "LOAD-001"
+        ]
+      }
+    ],
+    "root_decision": "DECISION-001"
+  },
+  "created_at": "2026-01-01T14:28:22.574716",
+  "created_by": null,
+  "comment": null,
+  "freshness_status": "ACTUAL",
+  "freshness_reason": null,
+  "reason_codes": []
+}

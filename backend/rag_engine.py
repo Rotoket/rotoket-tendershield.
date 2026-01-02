@@ -29,11 +29,10 @@ _initialized = False
 
 
 def _build_embeddings() -> OllamaEmbeddings:
-    """Создаёт объект эмбеддингов с приоритетом моделей qwen."""
+    """Создаёт объект эмбеддингов с приоритетом основной модели из настроек и qwen2.5:0.5b как fallback."""
     models_to_try = [
-        "qwen2.5-coder:7b",
+        getattr(settings, "OLLAMA_MODEL", "qwen2.5-coder:7b"),
         "qwen2.5:0.5b",
-        getattr(settings, "OLLAMA_MODEL", "qwen2.5:0.5b"),
     ]
 
     last_error: Optional[Exception] = None

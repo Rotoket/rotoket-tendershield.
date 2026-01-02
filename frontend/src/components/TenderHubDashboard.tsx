@@ -31,7 +31,7 @@ export const TenderHubDashboard: React.FC<TenderHubDashboardProps> = ({
   const handleParticipateClick = () => {
     logEvent(
       'TenderHubDashboard',
-      `Принято решение: УЧАСТВОВАТЬ. Вердикт: ${recommendation.verdict}, Индекс безопасности: ${result.score}`,
+      `Принято решение: УЧАСТВОВАТЬ. Вердикт: ${recommendation.verdict}, Индекс управленческой нагрузки: ${result.score}`,
       'info',
       {
         verdict: recommendation.verdict,
@@ -117,7 +117,7 @@ export const TenderHubDashboard: React.FC<TenderHubDashboardProps> = ({
 
         <div className="bg-[#111827] border border-[#1f2937] rounded-xl p-4 flex flex-col justify-between">
           <div>
-            <div className="text-xs text-slate-400 mb-1">Индекс безопасности</div>
+            <div className="text-xs text-slate-400 mb-1">Индекс управленческой нагрузки</div>
             <div className="text-3xl font-bold text-white mb-1">{result.score}</div>
             <div className="text-[11px] text-slate-400">
               Вердикт системы:{' '}

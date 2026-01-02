@@ -1,17 +1,39 @@
+# Node
 node_modules/
+
+# Env / secrets
 .env
 .env.*
-.venv/
-__pycache__/
-*.log
-.DS_Store
+*.env
 # Локальные окружения и секреты
 backend/.env
 frontend/.env
-*.env
 
 # Cursor / MCP (локальные конфиги, НЕ хранить в репозитории)
 .cursorules
 .cursorrules
 **/mcp.json
 **/mcp.local.json
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Editor
+.vscode/
+.idea/
+
+# Build outputs
+/dist/
+/build/
+/out/

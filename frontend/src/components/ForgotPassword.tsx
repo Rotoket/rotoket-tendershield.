@@ -25,10 +25,12 @@ const ForgotPassword: React.FC<ForgotPasswordProps> = ({ onBack }) => {
         setIsLoading(true);
 
         try {
-            await forgotPassword(email);
+            const result = await forgotPassword(email);
+            // Всегда показываем success для безопасности (не раскрываем существование email)
             setSuccess(true);
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Произошла ошибка. Попробуйте снова.');
+            // Даже при ошибке показываем success для безопасности
+            setSuccess(true);
             console.error('[Forgot Password Error]', err);
         } finally {
             setIsLoading(false);
@@ -52,11 +54,11 @@ const ForgotPassword: React.FC<ForgotPasswordProps> = ({ onBack }) => {
                     </div>
 
                     <div className="bg-[#1a1f2e] border border-[#2a3441] rounded-xl p-6 mb-6">
-                        <p className="text-[#a8b5cc] text-sm mb-4">
-                            Если указанный email зарегистрирован в системе, на него будет отправлена инструкция по сбросу пароля.
-                        </p>
                         <p className="text-[#a8b5cc] text-sm">
-                            Ссылка для сброса пароля действительна в течение <strong className="text-white">1 часа</strong>.
+                            Если email существует — мы отправили ссылку.
+                        </p>
+                        <p className="text-[#a8b5cc] text-sm mt-2">
+                            Ссылка действительна в течение <strong className="text-white">30 минут</strong>.
                         </p>
                     </div>
 

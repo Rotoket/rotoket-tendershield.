@@ -1,0 +1,23 @@
+{
+  "evidence_set_id": "ES-F1D6C16E",
+  "derived_from": "DS-8EB0D09B",
+  "evidence_objects": [
+    {
+      "evidence_id": "E-FE74427F",
+      "source_file": "НМЦК (филе трески, консервы рыбные).xls",
+      "fact": "Excel файл содержит 1 листов",
+      "classification": "MARKET_NOISE",
+      "financial_impact_rub": null,
+      "confidence": "high",
+      "derived_from": [
+        "excel-mcp-fallback"
+      ],
+      "page_reference": null,
+      "section_reference": null,
+      "raw_extract": null
+    }
+  ],
+  "mcp_versions": {},
+  "created_at": "2026-01-01T14:27:51.464928",
+  "evidence_hash": "4a98dcf088f5d7c9b806420268b0b25d5ff7fea20a650e824149a9fce6c958d5"
+}

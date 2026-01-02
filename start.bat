@@ -16,6 +16,18 @@ if "%ERRORLEVEL%"=="0" (
 )
 echo.
 
+echo [0.5/4] Проверка Pandoc...
+where pandoc >nul 2>&1
+if "%ERRORLEVEL%"=="0" (
+    rem Pandoc найден, ничего не выводим
+) else (
+    echo [ПРЕДУПРЕЖДЕНИЕ] Pandoc не найден в системе.
+    echo Для лучшего извлечения данных из .docx файлов рекомендуется установить Pandoc.
+    echo Скачать: https://pandoc.org/installing.html
+    echo Анализ будет работать, но с ограниченной точностью для документов с таблицами.
+)
+echo.
+
 echo [1/4] Запуск Backend...
 start "Backend" cmd /k "cd backend && venv\Scripts\activate && uvicorn main:app --reload --host 0.0.0.0 --port 8000"
 

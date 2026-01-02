@@ -1,0 +1,17 @@
+{
+  "decision_id": "D-11401F7D",
+  "derived_from": "ES-1F3B2D34",
+  "decision": "DO_NOT_PARTICIPATE",
+  "decision_preview": {
+    "decision": "DO_NOT_PARTICIPATE"
+  },
+  "decision_graph": null,
+  "created_at": "2025-12-24T09:46:22.999285",
+  "created_by": null,
+  "comment": null,
+  "freshness_status": "ACTUAL",
+  "freshness_reason": null,
+  "reason_codes": [
+    "unbounded_penalty"
+  ]
+}

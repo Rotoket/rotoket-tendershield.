@@ -5,6 +5,7 @@ import { VerdictType } from '../../types';
 interface DecisionSupportProps {
   verdict: VerdictType;
   score: number;
+  dealBreakersCount?: number;
   financialAnalysis?: {
     margin_risk: 'High' | 'Low' | 'Medium';
     cash_gap_risk: 'Yes' | 'No';
@@ -16,6 +17,7 @@ interface DecisionSupportProps {
 const DecisionSupport: React.FC<DecisionSupportProps> = ({
   verdict,
   score,
+  dealBreakersCount = 0,
   financialAnalysis,
   smartQuestions,
 }) => {
@@ -25,18 +27,22 @@ const DecisionSupport: React.FC<DecisionSupportProps> = ({
     if (verdict === 'STOP') {
       return type === 'best'
         ? {
-            title: 'Лучший сценарий (при участии)',
+            title: 'Лучший сценарий',
             description:
-              'Даже в лучшем случае вы столкнетесь с серьезными финансовыми и операционными рисками. Возможна частичная компенсация затрат, но прибыльность будет под вопросом.',
+              dealBreakersCount > 0
+                ? `При устранении критических стоп-факторов и контроле ключевых условий участие не создаёт дополнительной управленческой нагрузки.`
+                : `При контроле ключевых условий нагрузка на управление остаётся в допустимых границах.`,
             icon: AlertTriangle,
             color: 'text-[#f59e0b]',
             bgColor: 'bg-[#f59e0b]/10',
             borderColor: 'border-[#f59e0b]/30',
           }
         : {
-            title: 'Худший сценарий (при участии)',
+            title: 'Худший сценарий',
             description:
-              'Кассовый разрыв, невозможность выполнить обязательства, штрафы и репутационные потери. Высокий риск банкротства или значительных финансовых потерь.',
+              dealBreakersCount > 0
+                ? `При игнорировании критических стоп-факторов следствием являются задержки, штрафы и финансовые потери.`
+                : `При игнорировании ключевых условий следствием являются задержки, штрафы и финансовые потери.`,
             icon: XCircle,
             color: 'text-[#ff4444]',
             bgColor: 'bg-[#ff4444]/10',
@@ -49,7 +55,9 @@ const DecisionSupport: React.FC<DecisionSupportProps> = ({
         ? {
             title: 'Лучший сценарий',
             description:
-              'При условии устранения выявленных рисков и правильной подготовки, участие может быть успешным. Возможна умеренная прибыль при соблюдении всех условий.',
+              dealBreakersCount > 0
+                ? `При устранении критических стоп-факторов и контроле ключевых условий участие не создаёт дополнительной управленческой нагрузки.`
+                : `При контроле ключевых условий нагрузка на управление остаётся в допустимых границах.`,
             icon: TrendingUp,
             color: 'text-[#00e648]',
             bgColor: 'bg-[#00e648]/10',
@@ -58,7 +66,9 @@ const DecisionSupport: React.FC<DecisionSupportProps> = ({
         : {
             title: 'Худший сценарий',
             description:
-              'Невыполнение обязательств из-за недооценки рисков, задержки платежей, дополнительные расходы на устранение проблем. Прибыльность под вопросом.',
+              dealBreakersCount > 0
+                ? `При игнорировании критических стоп-факторов следствием являются задержки, штрафы и финансовые потери.`
+                : `При игнорировании ключевых условий следствием являются задержки, штрафы и финансовые потери.`,
             icon: TrendingDown,
             color: 'text-[#f59e0b]',
             bgColor: 'bg-[#f59e0b]/10',
@@ -71,7 +81,7 @@ const DecisionSupport: React.FC<DecisionSupportProps> = ({
       ? {
           title: 'Лучший сценарий',
           description:
-            'Успешное выполнение контракта в срок, получение прибыли, укрепление репутации и возможность дальнейшего сотрудничества с заказчиком.',
+            'При контроле ключевых условий нагрузка на управление остаётся в допустимых границах.',
           icon: CheckCircle,
           color: 'text-[#00e648]',
           bgColor: 'bg-[#00e648]/10',
@@ -80,7 +90,7 @@ const DecisionSupport: React.FC<DecisionSupportProps> = ({
       : {
           title: 'Худший сценарий',
           description:
-            'Незначительные задержки или дополнительные расходы, но без критических последствий. Общая прибыльность сохраняется.',
+            'При игнорировании ключевых условий следствием являются задержки, штрафы и финансовые потери.',
           icon: AlertTriangle,
           color: 'text-[#f59e0b]',
           bgColor: 'bg-[#f59e0b]/10',
@@ -88,8 +98,8 @@ const DecisionSupport: React.FC<DecisionSupportProps> = ({
         };
   };
 
-  const bestScenario = getScenario('best');
-  const worstScenario = getScenario('worst');
+  const bestScenario = getScenario('best', dealBreakersCount, verdict);
+  const worstScenario = getScenario('worst', dealBreakersCount, verdict);
   const BestIcon = bestScenario.icon;
   const WorstIcon = worstScenario.icon;
 

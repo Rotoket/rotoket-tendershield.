@@ -1,4 +1,4 @@
-import { AnalysisResult, ChatMessage, PackageAnalysis, AuditHistoryResponse } from '../types';
+import { AnalysisResult, ChatMessage, PackageAnalysis, AuditHistoryResponse, UserDecisionData } from '../types';
 import { getAuthHeaders } from './authService';
 import { parseAPIError, handleNetworkError, type APIError } from '../utils/apiErrorHandler';
 
@@ -23,15 +23,21 @@ export const analyzeDocument = async (
     formData.append('file', file);
     formData.append('industry', industry);
 
-    console.log(`[API] Отправка файла: ${file.name}, Сфера: ${industry}`);
+    console.log(`[API] Отправка файла: ${file.name}, Сфера: ${industry}, Demo: ${!!demoSessionId}`);
 
-    // Добавляем заголовок с demo_session_id, если есть
-    const headers: HeadersInit = {
-        ...getAuthHeaders(),
-    };
-
+    // В DEMO-режиме НЕ требуем токен авторизации
+    // Используем только demoSessionId
+    const headers: HeadersInit = {};
+    
     if (demoSessionId) {
+        // DEMO-режим: используем только demo session ID
         headers['X-Demo-Session-Id'] = demoSessionId;
+    } else {
+        // Обычный режим: используем токен авторизации (если есть)
+        const authHeaders = getAuthHeaders();
+        if (Object.keys(authHeaders).length > 0) {
+            Object.assign(headers, authHeaders);
+        }
     }
 
     try {
@@ -39,15 +45,33 @@ export const analyzeDocument = async (
         console.log(`[API] Запрос к: ${requestUrl}`);
         console.log(`[API] API_URL из env: ${import.meta.env.VITE_API_URL || 'не установлен'}`);
 
+        // Добавляем AbortController для таймаута запроса (5 минут)
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 минут
+        
         const response = await fetch(requestUrl, {
             method: 'POST',
             headers,
             body: formData,
+            signal: controller.signal,
         });
+        
+        clearTimeout(timeoutId);
 
         if (!response.ok) {
             const apiError = await parseAPIError(response, 'Ошибка при анализе документа');
             console.error("[API Error]", apiError);
+            
+            // В DEMO-режиме скрываем технические ошибки авторизации
+            if (demoSessionId && response.status === 401) {
+                // Заменяем техническую ошибку на нейтральную
+                apiError.message = 'Не удалось продолжить анализ. Попробуйте ещё раз или загрузите документы повторно.';
+                apiError.details = {
+                    ...apiError.details,
+                    hint: 'Если проблема повторяется, попробуйте обновить страницу.'
+                };
+            }
+            
             throw new APIErrorException(apiError);
         }
 
@@ -62,6 +86,22 @@ export const analyzeDocument = async (
         if (error instanceof APIErrorException) {
             throw error;
         }
+        
+        // Проверяем если это ошибка таймаута
+        if (error instanceof Error && error.name === 'AbortError') {
+            const timeoutError: APIError = {
+                type: 'TIMEOUT_ERROR',
+                message: 'Превышено время ожидания ответа от сервера (5 минут). Анализ может быть слишком долгим для больших документов.',
+                statusCode: 408,
+                details: {
+                    hint: 'Попробуйте загрузить документ меньшего размера или подождите еще немного - анализ может завершиться.',
+                    requestUrl: `${API_URL}/analyze`,
+                    apiUrl: API_URL,
+                }
+            };
+            throw new APIErrorException(timeoutError);
+        }
+        
         const networkError = handleNetworkError(error as Error);
         // Добавляем информацию об URL в детали ошибки
         networkError.details = {
@@ -112,25 +152,55 @@ export const chatWithSinaps = async (history: ChatMessage[], message: string): P
 export const analyzePackage = async (
     files: File[],
     industry: string = 'UNIVERSAL',
+    demoSessionId?: string | null
 ): Promise<PackageAnalysis> => {
     const formData = new FormData();
     files.forEach((file) => formData.append('files', file));
     formData.append('industry', industry);
 
-    console.log(`[API] Отправка пакета файлов (${files.length} шт.), Сфера: ${industry}`);
+    console.log(`[API] Отправка пакета файлов (${files.length} шт.), Сфера: ${industry}, Demo: ${!!demoSessionId}`);
+
+    // В DEMO-режиме НЕ требуем токен авторизации
+    const headers: HeadersInit = {};
+    
+    if (demoSessionId) {
+        // DEMO-режим: используем только demo session ID
+        headers['X-Demo-Session-Id'] = demoSessionId;
+    } else {
+        // Обычный режим: используем токен авторизации (если есть)
+        const authHeaders = getAuthHeaders();
+        if (Object.keys(authHeaders).length > 0) {
+            Object.assign(headers, authHeaders);
+        }
+    }
 
     try {
+        // Добавляем AbortController для таймаута запроса (10 минут для пакета)
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 600000); // 10 минут для пакета
+        
         const response = await fetch(`${API_URL}/analyze-package`, {
             method: 'POST',
-            headers: {
-                ...getAuthHeaders(),
-            },
+            headers,
             body: formData,
+            signal: controller.signal,
         });
+        
+        clearTimeout(timeoutId);
 
         if (!response.ok) {
             const apiError = await parseAPIError(response, 'Ошибка при анализе пакета документов');
             console.error('[API Error][package]', apiError);
+            
+            // В DEMO-режиме скрываем технические ошибки авторизации
+            if (demoSessionId && response.status === 401) {
+                // Заменяем техническую ошибку на нейтральную
+                apiError.message = 'Не удалось продолжить анализ. Попробуйте ещё раз или загрузите документы повторно.';
+                apiError.details = {
+                    ...apiError.details,
+                    hint: 'Если проблема повторяется, попробуйте обновить страницу.'
+                };
+            }
             
             // Специальная обработка ошибки 503 (Ollama недоступен)
             if (response.status === 503) {
@@ -151,12 +221,115 @@ export const analyzePackage = async (
         if (error instanceof APIErrorException) {
             throw error;
         }
+        
+        // Проверяем если это ошибка таймаута
+        if (error instanceof Error && error.name === 'AbortError') {
+            const timeoutError: APIError = {
+                type: 'TIMEOUT_ERROR',
+                message: 'Превышено время ожидания ответа от сервера (10 минут). Анализ пакета документов может быть очень долгим.',
+                statusCode: 408,
+                details: {
+                    hint: 'Попробуйте загрузить меньше документов одновременно или подождите еще немного.',
+                    requestUrl: `${API_URL}/analyze-package`,
+                    apiUrl: API_URL,
+                }
+            };
+            throw new APIErrorException(timeoutError);
+        }
+        
         const networkError = handleNetworkError(error as Error);
         throw new APIErrorException(networkError);
     }
 };
 
 // Анализ по номеру закупки через zakupki.gov.ru
+/**
+ * Запускает асинхронный анализ документа
+ */
+export const startAnalysis = async (
+    file: File | null,
+    files: File[] | null,
+    industry: string = 'UNIVERSAL',
+    demoSessionId?: string | null
+): Promise<{ analysis_id: string; status: string; message: string }> => {
+    const formData = new FormData();
+    
+    if (file) {
+        formData.append('file', file);
+    } else if (files && files.length > 0) {
+        files.forEach(f => formData.append('files', f));
+    } else {
+        throw new Error('Не переданы файлы для анализа');
+    }
+    
+    formData.append('industry', industry);
+    
+    const headers: HeadersInit = {};
+    
+    if (demoSessionId) {
+        headers['X-Demo-Session-Id'] = demoSessionId;
+    } else {
+        const authHeaders = getAuthHeaders();
+        if (Object.keys(authHeaders).length > 0) {
+            Object.assign(headers, authHeaders);
+        }
+    }
+    
+    const response = await fetch(`${API_URL}/analysis/start`, {
+        method: 'POST',
+        headers,
+        body: formData,
+    });
+    
+    if (!response.ok) {
+        const errorData = await parseAPIError(response);
+        throw new APIErrorException(errorData);
+    }
+    
+    return await response.json();
+};
+
+/**
+ * Получает статус задачи анализа
+ */
+export const getAnalysisStatus = async (
+    analysisId: string,
+    demoSessionId?: string | null
+): Promise<{
+    analysis_id: string;
+    status: string;
+    progress: number;
+    stage?: string;
+    result?: any;
+    error_message?: string;
+    created_at: string;
+    started_at?: string;
+    finished_at?: string;
+}> => {
+    const headers: HeadersInit = {};
+    
+    if (demoSessionId) {
+        headers['X-Demo-Session-Id'] = demoSessionId;
+    } else {
+        const authHeaders = getAuthHeaders();
+        if (Object.keys(authHeaders).length > 0) {
+            Object.assign(headers, authHeaders);
+        }
+    }
+    
+    const response = await fetch(`${API_URL}/analysis/status/${analysisId}`, {
+        method: 'GET',
+        headers,
+    });
+    
+    if (!response.ok) {
+        const errorData = await parseAPIError(response);
+        throw new APIErrorException(errorData);
+    }
+    
+    return await response.json();
+};
+
 export const analyzeFromZakupki = async (tenderId: string): Promise<AnalysisResult> => {
     const formData = new FormData();
     formData.append('tenderId', tenderId);
@@ -292,6 +465,61 @@ export const exportAnalysisToExcelById = async (analysisId: number): Promise<Blo
         }
 
         return await response.blob();
+    } catch (error) {
+        if (error instanceof APIErrorException) {
+            throw error;
+        }
+        const networkError = handleNetworkError(error as Error);
+        throw new APIErrorException(networkError);
+    }
+};
+
+// Сохранение решения пользователя (Decision Layer)
+export const saveAnalysisDecision = async (
+    analysisId: number,
+    decisionData: UserDecisionData
+): Promise<void> => {
+    try {
+        const response = await fetch(`${API_URL}/analysis/${analysisId}/decision`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                ...getAuthHeaders(),
+            },
+            body: JSON.stringify(decisionData),
+        });
+
+        if (!response.ok) {
+            const apiError = await parseAPIError(response, 'Ошибка сохранения решения');
+            throw new APIErrorException(apiError);
+        }
+    } catch (error) {
+        if (error instanceof APIErrorException) {
+            throw error;
+        }
+        const networkError = handleNetworkError(error as Error);
+        throw new APIErrorException(networkError);
+    }
+};
+
+export const savePackageDecision = async (
+    packageId: string,
+    decisionData: UserDecisionData
+): Promise<void> => {
+    try {
+        const response = await fetch(`${API_URL}/package/${packageId}/decision`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                ...getAuthHeaders(),
+            },
+            body: JSON.stringify(decisionData),
+        });
+
+        if (!response.ok) {
+            const apiError = await parseAPIError(response, 'Ошибка сохранения решения');
+            throw new APIErrorException(apiError);
+        }
     } catch (error) {
         if (error instanceof APIErrorException) {
             throw error;

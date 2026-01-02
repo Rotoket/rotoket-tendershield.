@@ -1,0 +1,13 @@
+{
+  "evidence_set_id": "ES-1F3B2D34",
+  "derived_from": "DS-EC34300E",
+  "evidence_objects": [
+    {
+      "evidence_id": "E-TEST",
+      "fact": "test"
+    }
+  ],
+  "mcp_versions": {},
+  "created_at": "2025-12-24T09:46:22.997768",
+  "evidence_hash": "a14e161d1276608aa51ba0c31b5d027ed86a81bf0f1621fdecff307c822ca101"
+}

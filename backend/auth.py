@@ -17,7 +17,9 @@ import logging
 logger = logging.getLogger(__name__)
 
 # Настройка хеширования паролей
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# Используем pbkdf2_sha256, чтобы избежать платформенных ограничений bcrypt (72 байта и привязка к C-библиотекам),
+# при этом остаётся надёжный алгоритм с растяжкой ключа.
+pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 
 # OAuth2 схема для получения токена из заголовка
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login", auto_error=False)
@@ -25,7 +27,14 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login", auto_error=False
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Проверяет пароль"""
-    return pwd_context.verify(plain_password, hashed_password)
+    try:
+        result = pwd_context.verify(plain_password, hashed_password)
+        if not result:
+            logger.debug(f"Пароль не совпадает для хеша: {hashed_password[:20]}...")
+        return result
+    except Exception as e:
+        logger.error(f"Ошибка при проверке пароля: {e}")
+        return False
 
 
 def get_password_hash(password: str) -> str:
@@ -40,6 +49,7 @@ def get_password_hash(password: str) -> str:
         raw_password = str(password or "").strip()
         encoded = raw_password.encode("utf-8", errors="ignore")
 
+    # Если больше 72 байт — обрезаем по байтам
     if len(encoded) > 72:
         logger.warning(
             "Пароль длиннее 72 байт, выполняем безопасное усечение до допустимой длины для bcrypt"
@@ -47,7 +57,15 @@ def get_password_hash(password: str) -> str:
         trimmed_bytes = encoded[:72]
         raw_password = trimmed_bytes.decode("utf-8", errors="ignore")
 
-    return pwd_context.hash(raw_password)
+    # На некоторых конфигурациях passlib/bcrypt всё равно может кидать ValueError
+    # "password cannot be longer than 72 bytes" — подстрахуемся и повторно обрежем.
+    try:
+        return pwd_context.hash(raw_password)
+    except ValueError as e:
+        logger.warning(f"Повторное усечение пароля из-за ошибки bcrypt: {e}")
+        safe_bytes = raw_password.encode("utf-8", errors="ignore")[:72]
+        safe_password = safe_bytes.decode("utf-8", errors="ignore")
+        return pwd_context.hash(safe_password)
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
@@ -64,19 +82,29 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
 
 
 def get_user_by_email(db: Session, email: str) -> Optional[User]:
-    """Получает пользователя по email"""
-    return db.query(User).filter(User.email == email).first()
+    """Получает пользователя по email (case-insensitive)"""
+    # Email должен быть case-insensitive для удобства пользователей
+    return db.query(User).filter(User.email.ilike(email)).first()
 
 
 def authenticate_user(db: Session, email: str, password: str) -> Optional[User]:
     """Аутентифицирует пользователя"""
     user = get_user_by_email(db, email)
     if not user:
+        logger.debug(f"Пользователь с email {email} не найден")
         return None
+    
+    logger.debug(f"Проверка пароля для пользователя {email}, хеш: {user.hashed_password[:30]}...")
+    
     if not verify_password(password, user.hashed_password):
+        logger.warning(f"Неверный пароль для пользователя {email}")
         return None
+    
     if not user.is_active:
+        logger.warning(f"Пользователь {email} неактивен")
         return None
+    
+    logger.info(f"✅ Успешная аутентификация пользователя {email}")
     return user
 
 
@@ -102,13 +130,21 @@ async def get_current_user(
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         email: str = payload.get("sub")
         if email is None:
+            logger.warning("JWT payload не содержит 'sub' (email)")
             raise credentials_exception
-    except JWTError:
+        logger.debug(f"JWT декодирован, email из токена: {email}")
+    except JWTError as e:
+        logger.warning(f"Ошибка декодирования JWT: {e}")
         raise credentials_exception
     
-    user = get_user_by_email(db, email=email)
+    # Нормализуем email (lowercase) для поиска
+    email_normalized = email.lower().strip()
+    user = get_user_by_email(db, email=email_normalized)
     if user is None:
+        logger.warning(f"Пользователь с email {email_normalized} не найден в БД")
         raise credentials_exception
+    
+    logger.debug(f"✅ Пользователь найден: {user.email}")
     
     return user
 

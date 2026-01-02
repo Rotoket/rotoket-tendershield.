@@ -1,0 +1,13 @@
+{
+  "snapshot_id": "DS-55295E87",
+  "files": [
+    {
+      "filename": "sample.xlsx",
+      "path": "C:\\Users\\Dom\\AppData\\Local\\Temp\\pytest-of-Dom\\pytest-0\\test_analyze_single_file_reads0\\sample.xlsx",
+      "size": 4911
+    }
+  ],
+  "hash": "a40fe7de2f350f6c7c9528e9f2b71172cdc4972ce6b5ba33d6c7a7893c756e69",
+  "created_at": "2025-12-25T10:07:30.810555",
+  "industry": "UNIVERSAL"
+}

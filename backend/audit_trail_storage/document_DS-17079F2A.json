@@ -1,0 +1,13 @@
+{
+  "snapshot_id": "DS-17079F2A",
+  "files": [
+    {
+      "filename": "tender_test.txt",
+      "path": "C:\\Users\\Dom\\AppData\\Local\\Temp\\pytest-of-Dom\\pytest-0\\test_analyze_single_file_uses_0\\tender_test.txt",
+      "size": 120
+    }
+  ],
+  "hash": "ab2a0a84752650f9494eb4c99779cc5e89878bf42fba709d8d96bc9115f7ca3e",
+  "created_at": "2025-12-25T13:27:24.344964",
+  "industry": "UNIVERSAL"
+}

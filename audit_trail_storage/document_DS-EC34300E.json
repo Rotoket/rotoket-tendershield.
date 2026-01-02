@@ -1,0 +1,14 @@
+{
+  "snapshot_id": "DS-EC34300E",
+  "files": [
+    {
+      "filename": "test.pdf",
+      "size_bytes": 1024,
+      "checksum_sha256": "test_hash",
+      "upload_timestamp": "2025-01-01T00:00:00"
+    }
+  ],
+  "hash": "3537e6d7b1091e54c7127707a1c4808c6a2be2725c2e82bd9d0042b59062104b",
+  "created_at": "2025-12-24T09:46:22.997768",
+  "industry": "UNIVERSAL"
+}

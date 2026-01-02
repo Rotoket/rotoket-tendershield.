@@ -1,0 +1,39 @@
+{
+  "current_mode": "NORMAL",
+  "is_active": false,
+  "last_activation": {
+    "activation_id": "KS-7948B155",
+    "timestamp": "2025-12-25T11:57:09.368859",
+    "trigger": "manual_admin",
+    "reason": "Деактивация: Деактивация для возврата в нормальный режим работы",
+    "previous_mode": "SAFE",
+    "new_mode": "NORMAL",
+    "activated_by": "admin_script",
+    "system_version": null,
+    "metadata": {}
+  },
+  "activation_history": [
+    {
+      "activation_id": "KS-474A8C9B",
+      "timestamp": "2025-12-24T10:00:51.445788",
+      "trigger": "manual_admin",
+      "reason": "РўРµСЃС‚РѕРІР°СЏ Р°РєС‚РёРІР°С†РёСЏ",
+      "previous_mode": "NORMAL",
+      "new_mode": "SAFE",
+      "activated_by": null,
+      "system_version": null,
+      "metadata": {}
+    },
+    {
+      "activation_id": "KS-7948B155",
+      "timestamp": "2025-12-25T11:57:09.368859",
+      "trigger": "manual_admin",
+      "reason": "Деактивация: Деактивация для возврата в нормальный режим работы",
+      "previous_mode": "SAFE",
+      "new_mode": "NORMAL",
+      "activated_by": "admin_script",
+      "system_version": null,
+      "metadata": {}
+    }
+  ]
+}

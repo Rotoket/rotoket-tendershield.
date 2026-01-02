@@ -86,11 +86,10 @@ def _load_documents() -> List:
 
 
 def _build_embeddings() -> OllamaEmbeddings:
-    """Создаёт объект эмбеддингов с приоритетом qwen2.5-coder:7b, затем fallback."""
+    """Создаёт объект эмбеддингов с приоритетом основной модели из настроек и лёгкого fallback."""
     models_to_try = [
-        "qwen2.5-coder:7b",
+        getattr(settings, "OLLAMA_MODEL", "qwen2.5-coder:7b"),
         "qwen2.5:0.5b",
-        getattr(settings, "OLLAMA_MODEL", "qwen2.5:0.5b"),
     ]
 
     last_error = None

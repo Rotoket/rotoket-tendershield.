@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Upload, FileText, X, Loader2, ArrowRight, FileSearch, ChevronRight, Monitor, Hammer, Stethoscope, Layers } from 'lucide-react';
+import { Upload, FileText, X, Loader2, ArrowRight, FileSearch, ChevronRight } from 'lucide-react';
 import { analyzeDocument, analyzePackage, chatWithSinaps, APIErrorException, searchLegal } from '../services/geminiService';
-import { AnalysisResult, PackageAnalysis, PackageDocumentAnalysis, VerdictType, CalculatorPreset, ChatMessage } from '../types';
+import { AnalysisResult, PackageAnalysis, PackageDocumentAnalysis, VerdictType, CalculatorPreset, ChatMessage, UserDecision } from '../types';
 import { logEvent } from '../utils/logger';
 import { getCurrentUser } from '../services/authService';
 import { useDemo } from '../context/DemoContext';
@@ -11,13 +11,21 @@ import RateLimitError from './RateLimitError';
 import { RegisterSuggestionModal } from './RegisterSuggestionModal';
 import TenderHubDashboard from './TenderHubDashboard';
 import { saveAnalysis, getLastAnalysis } from '../utils/analysisStorage';
+import { appendAuditEvent } from '../utils/auditTrail';
+import DecisionBlock, { type DecisionData } from './decision/DecisionBlock';
+import { getCurrentDemoSession } from '../utils/demoBootstrap';
 
 // Компоненты из audit/
+import DecisionPreview from './audit/DecisionPreview';
 import HeroVerdict from './audit/HeroVerdict';
 import AIConsultantIntro from './audit/AIConsultantIntro';
 import FinancialMetricsGrid from './audit/FinancialMetricsGrid';
+import TenderContextPanel from './audit/TenderContextPanel';
 import RiskNarrative from './audit/RiskNarrative';
+import DealBreakersPanel from './audit/DealBreakersPanel';
 import DecisionSupport from './audit/DecisionSupport';
+import KillSwitchBanner from './KillSwitchBanner';
+import { getKillSwitchStatus, type KillSwitchStatus } from '../services/killSwitchService';
 
 interface LegalSnippetVm {
   id: string;
@@ -30,36 +38,52 @@ interface LegalSnippetVm {
 interface TenderAnalysisProps {
   mode?: 'single' | 'package'; // Режим анализа
   onAnalysisComplete?: (preset: any) => void;
+  onAnalysisResultReady?: (result: AnalysisResult | PackageAnalysis, files?: File[]) => void; // Результат анализа готов (для перехода к decision_preview)
   onOpenCalculator?: () => void;
   onOpenGenerator?: (dealBreakers: string[], smartQuestions?: string[]) => void;
   onSelectForCalculator?: (preset: CalculatorPreset) => void;
   onViewKnowledge?: (query: string) => void; // Интеграция с Базой знаний
+  onDecisionChange?: (decision: UserDecision) => void; // Уведомление об изменении решения
+  /** Показывать ли DecisionPreviewScreen вместо обычного результата (для неавторизованных) */
+  showDecisionPreview?: boolean;
 }
 
 // Хелпер для отладочного логирования
+// ОТКЛЮЧЕНО: отладочный сервис на порту 7242 не запущен
+// Раскомментируйте если нужно включить отладку
 const debugLog = (location: string, message: string, data: any = {}) => {
-  fetch('http://127.0.0.1:7242/ingest/774c37f9-2730-424c-a946-358b90a4d038', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      location,
-      message,
-      data,
-      timestamp: Date.now(),
-      sessionId: 'debug-session',
-      runId: 'run1',
-      hypothesisId: 'TenderAnalysis'
-    })
-  }).catch(() => { });
+  // Отладочный сервис отключен для избежания ошибок ERR_CONNECTION_REFUSED
+  // Если нужно включить - запустите сервис на порту 7242
+  // fetch('http://127.0.0.1:7242/ingest/774c37f9-2730-424c-a946-358b90a4d038', {
+  //   method: 'POST',
+  //   headers: { 'Content-Type': 'application/json' },
+  //   body: JSON.stringify({
+  //     location,
+  //     message,
+  //     data,
+  //     timestamp: Date.now(),
+  //     sessionId: 'debug-session',
+  //     runId: 'run1',
+  //     hypothesisId: 'TenderAnalysis'
+  //   })
+  // }).catch(() => { });
+  
+  // Вместо этого просто логируем в консоль
+  if (import.meta.env.DEV) {
+    console.log(`[DEBUG] ${location}: ${message}`, data);
+  }
 };
 
 const TenderAnalysis: React.FC<TenderAnalysisProps> = ({
   mode = 'package',
   onAnalysisComplete,
+  onAnalysisResultReady,
   onOpenCalculator,
   onOpenGenerator,
   onSelectForCalculator,
   onViewKnowledge,
+  onDecisionChange,
+  showDecisionPreview = false,
 }) => {
   // #region agent log
   debugLog('TenderAnalysis.tsx:37', 'TenderAnalysis component initialized', { mode });
@@ -71,7 +95,8 @@ const TenderAnalysis: React.FC<TenderAnalysisProps> = ({
   // Состояние для single mode
   const [singleFile, setSingleFile] = useState<File | null>(null);
   const [singleResult, setSingleResult] = useState<AnalysisResult | null>(null);
-  const [selectedIndustry, setSelectedIndustry] = useState<string>('UNIVERSAL');
+  // Всегда используем UNIVERSAL для одиночного анализа
+  const selectedIndustry = 'UNIVERSAL';
 
   // Состояние для package mode
   const [packageFiles, setPackageFiles] = useState<File[]>([]);
@@ -82,6 +107,10 @@ const TenderAnalysis: React.FC<TenderAnalysisProps> = ({
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [rateLimitError, setRateLimitError] = useState<APIError | null>(null);
+  // Локальное состояние решения для индикатора этапов
+  const [localDecision, setLocalDecision] = useState<UserDecision | null>(null);
+  // Статус Kill Switch
+  const [killSwitchStatus, setKillSwitchStatus] = useState<KillSwitchStatus | null>(null);
 
   // Chat state
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -94,10 +123,60 @@ const TenderAnalysis: React.FC<TenderAnalysisProps> = ({
   // Demo mode
   const { demoState, incrementAnalysis, getOrCreateSession } = useDemo();
   const [user, setUser] = useState<any>(null);
+  
+  // Получаем demo session ID из bootstrap или context
+  const getDemoSessionId = (): string | null => {
+    // Сначала пробуем из context
+    if (demoState?.sessionId) {
+      logEvent('TenderAnalysis', 'Demo session ID from context', 'info', { sessionId: demoState.sessionId });
+      return demoState.sessionId;
+    }
+    // Потом из bootstrap
+    try {
+      const session = getCurrentDemoSession();
+      if (session?.id) {
+        logEvent('TenderAnalysis', 'Demo session ID from bootstrap', 'info', { sessionId: session.id });
+        return session.id;
+      }
+    } catch (e) {
+      logEvent('TenderAnalysis', 'Failed to get demo session from bootstrap', 'warn', e);
+    }
+    logEvent('TenderAnalysis', 'No demo session ID found', 'info');
+    return null;
+  };
+
+  // Семантические этапы анализа
+  const analysisStages = [
+    'Извлечение ключевых условий',
+    'Проверка финансовых параметров',
+    'Анализ юридических формулировок',
+    'Поиск потенциальных стоп-факторов',
+    'Формирование управленческого вывода',
+  ] as const;
+  const [analysisStageIndex, setAnalysisStageIndex] = useState<number>(0);
+  const [analysisStartedAt, setAnalysisStartedAt] = useState<number | null>(null);
+  const [analysisTookLong, setAnalysisTookLong] = useState<boolean>(false);
   const [showRegisterModal, setShowRegisterModal] = useState(false);
   const [registerModalType, setRegisterModalType] = useState<'after_analysis' | 'export_pdf' | 'view_history'>('after_analysis');
 
   const { showToast, ToastComponent } = useToast();
+
+  // Загрузка статуса Kill Switch
+  useEffect(() => {
+    const loadKillSwitchStatus = async () => {
+      try {
+        const status = await getKillSwitchStatus();
+        setKillSwitchStatus(status);
+      } catch (error) {
+        logEvent('TenderAnalysis', 'Error loading kill switch status', 'error', error);
+      }
+    };
+
+    loadKillSwitchStatus();
+    // Обновляем статус каждые 30 секунд
+    const interval = setInterval(loadKillSwitchStatus, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Инициализация чата
   useEffect(() => {
@@ -171,7 +250,7 @@ const TenderAnalysis: React.FC<TenderAnalysisProps> = ({
               error: err instanceof Error ? err.message : String(err)
             });
             // #endregion
-            console.error(`Ошибка загрузки норм для риска "${issue.title}":`, err);
+            logEvent('TenderAnalysis', `Ошибка загрузки норм для риска: ${issue.title}`, 'error', err);
           }
         }
         setLegalReferencesMap(newMap);
@@ -210,7 +289,7 @@ const TenderAnalysis: React.FC<TenderAnalysisProps> = ({
               error: err instanceof Error ? err.message : String(err)
             });
             // #endregion
-            console.error(`Ошибка загрузки норм для риска "${issue.title}":`, err);
+            logEvent('TenderAnalysis', `Ошибка загрузки норм для риска: ${issue.title}`, 'error', err);
           }
         }
         setLegalReferencesMap(newMap);
@@ -221,6 +300,8 @@ const TenderAnalysis: React.FC<TenderAnalysisProps> = ({
 
   // Обработка загрузки файла (single mode)
   const handleSingleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (isAnalyzing) return;
+
     if (e.target.files?.[0]) {
       const uploadedFile = e.target.files[0];
       // #region agent log
@@ -242,10 +323,17 @@ const TenderAnalysis: React.FC<TenderAnalysisProps> = ({
           fileName: uploadedFile.name
         });
         // #endregion
-        showToast(validation.error || 'Ошибка валидации файла', 'error');
+        showToast('error', validation.error || 'Ошибка валидации файла');
         e.target.value = '';
         return;
       }
+
+      // Логируем добавление файла в анализ
+      logEvent('TenderAnalysis', 'file_added', 'info', {
+        mode: 'single',
+        fileName: uploadedFile.name,
+        fileSize: uploadedFile.size,
+      });
 
       setSingleFile(uploadedFile);
       setSingleResult(null);
@@ -256,9 +344,11 @@ const TenderAnalysis: React.FC<TenderAnalysisProps> = ({
 
   // Обработка загрузки файлов (package mode)
   const handlePackageFilesChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (isAnalyzing) return;
+
     const selected = event.target.files;
     if (!selected) return;
-    const asArray = Array.from(selected);
+    const asArray: File[] = Array.from(selected);
     // #region agent log
     debugLog('TenderAnalysis.tsx:handlePackageFilesChange', 'Files selected for package mode', {
       filesCount: asArray.length,
@@ -277,6 +367,14 @@ const TenderAnalysis: React.FC<TenderAnalysisProps> = ({
         afterDedup: uniqueFiles.length
       });
       // #endregion
+
+      logEvent('TenderAnalysis', 'file_added', 'info', {
+        mode: 'package',
+        addedCount: asArray.length,
+        totalAfterDedup: uniqueFiles.length,
+        fileNames: asArray.map(f => f.name),
+      });
+
       return uniqueFiles;
     });
     setPackageResult(null);
@@ -284,9 +382,38 @@ const TenderAnalysis: React.FC<TenderAnalysisProps> = ({
     setRateLimitError(null);
   };
 
+  // Сброс состояния анализа (для начала нового анализа)
+  const handleResetAnalysis = () => {
+    setIsAnalyzing(false);
+    setError(null);
+    setRateLimitError(null);
+    setSingleResult(null);
+    setPackageResult(null);
+    setSingleFile(null);
+    setPackageFiles([]);
+    setAnalysisStageIndex(0);
+    setAnalysisStartedAt(null);
+    setAnalysisTookLong(false);
+    setLocalDecision(null);
+    setMessages([]);
+    setInputMsg('');
+    logEvent('TenderAnalysis', 'analysis_reset', 'info', { mode: currentMode });
+  };
+
   // Анализ одного документа
   const handleAnalyzeSingle = async () => {
     if (!singleFile) return;
+
+    // Логируем запуск анализа
+    logEvent('TenderAnalysis', 'analysis_started', 'info', {
+      mode: 'single',
+      fileName: singleFile.name,
+      fileSize: singleFile.size,
+    });
+
+    setAnalysisStageIndex(0);
+    setAnalysisStartedAt(Date.now());
+    setAnalysisTookLong(false);
 
     // #region agent log
     debugLog('TenderAnalysis.tsx:handleAnalyzeSingle', 'Starting single document analysis', {
@@ -301,7 +428,7 @@ const TenderAnalysis: React.FC<TenderAnalysisProps> = ({
     setRateLimitError(null);
 
     try {
-      const demoSessionId = demoState?.sessionId || null;
+      const demoSessionId = getDemoSessionId();
       const result = await analyzeDocument(singleFile, selectedIndustry, demoSessionId);
 
       if (result) {
@@ -323,11 +450,22 @@ const TenderAnalysis: React.FC<TenderAnalysisProps> = ({
         // #endregion
         setSingleResult(result);
 
+        logEvent('TenderAnalysis', 'analysis_completed', 'info', {
+          mode: 'single',
+          verdict: result.verdict,
+          score: result.score,
+        });
+
         // Сохраняем анализ в localStorage
         const analysisId = saveAnalysis('single', result);
         debugLog('TenderAnalysis.tsx:handleAnalyzeSingle', 'Analysis saved to storage', { analysisId });
 
         logEvent('TenderAnalysis', `Анализ завершен (single, ${selectedIndustry})`, 'info');
+
+        // Уведомляем о готовности результата (для перехода к decision_preview)
+        if (onAnalysisResultReady) {
+          onAnalysisResultReady(result, [singleFile]);
+        }
 
         if (onAnalysisComplete && result.passport?.nmck) {
           onAnalysisComplete({
@@ -365,6 +503,17 @@ const TenderAnalysis: React.FC<TenderAnalysisProps> = ({
   const handleAnalyzePackage = async () => {
     if (packageFiles.length === 0) return;
 
+    // Логируем запуск анализа
+    logEvent('TenderAnalysis', 'analysis_started', 'info', {
+      mode: 'package',
+      filesCount: packageFiles.length,
+      fileNames: packageFiles.map(f => f.name),
+    });
+
+    setAnalysisStageIndex(0);
+    setAnalysisStartedAt(Date.now());
+    setAnalysisTookLong(false);
+
     // #region agent log
     debugLog('TenderAnalysis.tsx:handleAnalyzePackage', 'Starting package analysis', {
       filesCount: packageFiles.length,
@@ -378,26 +527,20 @@ const TenderAnalysis: React.FC<TenderAnalysisProps> = ({
     setRateLimitError(null);
 
     try {
-      const formData = new FormData();
-      packageFiles.forEach(file => formData.append('files', file));
-      formData.append('industry', 'UNIVERSAL');
-
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/analyze-package`, {
-        method: 'POST',
-        headers: {
-          ...(localStorage.getItem('tender_shield_token') ? {
-            'Authorization': `Bearer ${localStorage.getItem('tender_shield_token')}`
-          } : {}),
-        },
-        body: formData,
+      // Фиксируем старт анализа пакета (ANALYSIS_STARTED)
+      appendAuditEvent({
+        id: Date.now().toString(),
+        entityType: 'package_analysis',
+        entityId: 'pending',
+        eventType: 'analysis_started',
+        timestamp: new Date().toISOString(),
+        actor: { type: 'user' },
+        snapshot: {},
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.detail || `Ошибка: ${response.status}`);
-      }
-
-      const result: PackageAnalysis = await response.json();
+      // Используем сервис analyzePackage с поддержкой DEMO-режима
+      const demoSessionId = getDemoSessionId();
+      const result = await analyzePackage(packageFiles, 'UNIVERSAL', demoSessionId);
       // #region agent log
       debugLog('TenderAnalysis.tsx:handleAnalyzePackage', 'Package analysis completed', {
         hasResult: !!result,
@@ -414,6 +557,37 @@ const TenderAnalysis: React.FC<TenderAnalysisProps> = ({
       // Сохраняем анализ в localStorage
       const analysisId = saveAnalysis('package', result);
       debugLog('TenderAnalysis.tsx:handleAnalyzePackage', 'Analysis saved to storage', { analysisId });
+
+      logEvent('TenderAnalysis', 'analysis_completed', 'info', {
+        mode: 'package',
+        verdict: result.verdict,
+        score: result.summaryScore,
+        filesCount: packageFiles.length,
+      });
+
+      // Фиксируем завершение анализа (ANALYSIS_COMPLETED)
+      appendAuditEvent({
+        id: `${Date.now().toString()}_completed`,
+        entityType: 'package_analysis',
+        entityId: analysisId,
+        eventType: 'analysis_completed',
+        timestamp: new Date().toISOString(),
+        actor: { type: 'system' },
+        snapshot: {
+          verdict: String(result.verdict),
+          score: Math.round(result.summaryScore),
+          dealBreakersCount: (result.globalIssues || []).filter(
+            gi =>
+              gi.severity.toLowerCase() === 'critical' ||
+              gi.severity.toLowerCase() === 'high',
+          ).length,
+        },
+      });
+
+      // Уведомляем о готовности результата (для перехода к decision_preview)
+      if (onAnalysisResultReady) {
+        onAnalysisResultReady(result, packageFiles);
+      }
 
       logEvent('TenderAnalysis', 'Анализ пакета завершен', 'info');
     } catch (err: any) {
@@ -474,28 +648,110 @@ const TenderAnalysis: React.FC<TenderAnalysisProps> = ({
     }
   };
 
-  // Получение иконки отрасли
-  const getIndustryIcon = (ind: string) => {
-    switch (ind) {
-      case 'IT': return Monitor;
-      case 'CONSTRUCTION': return Hammer;
-      case 'MEDICINE': return Stethoscope;
-      default: return Layers;
-    }
-  };
+  // Функции getIndustryIcon и getIndustryLabel удалены - больше не используются
 
-  // Получение названия отрасли
-  const getIndustryLabel = (ind: string) => {
-    switch (ind) {
-      case 'UNIVERSAL': return 'Универсальный';
-      case 'IT': return 'IT и ПО';
-      case 'CONSTRUCTION': return 'Строительство';
-      case 'MEDICINE': return 'Медицина';
-      default: return ind;
-    }
-  };
+  const selectedDoc = packageResult?.documents?.[selectedDocIndex >= 0 ? selectedDocIndex : 0] || null;
 
-  const selectedDoc = packageResult?.documents?.[selectedDocIndex] || null;
+  // Логирование просмотра экрана загрузки документов
+  useEffect(() => {
+    logEvent('TenderAnalysis', 'documents_upload_viewed', 'info');
+  }, []);
+
+  // Двигаем семантические этапы анализа, пока идёт isAnalyzing
+  useEffect(() => {
+    if (!isAnalyzing || analysisStages.length === 0) {
+      return;
+    }
+
+    const stageIntervalMs = 4000;
+    const intervalId = window.setInterval(() => {
+      setAnalysisStageIndex((prev) => {
+        const next = Math.min(prev + 1, analysisStages.length - 1);
+        if (next !== prev) {
+          logEvent('TenderAnalysis', 'analysis_stage_changed', 'info', {
+            stageIndex: next,
+            stageLabel: analysisStages[next],
+          });
+        }
+        return next;
+      });
+    }, stageIntervalMs);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [isAnalyzing, analysisStages]);
+
+  // Тайм-аут ожидания анализа
+  // Увеличен до 5 минут для больших документов с LLM анализом
+  useEffect(() => {
+    if (!isAnalyzing || !analysisStartedAt || analysisTookLong) {
+      return;
+    }
+
+    const timeoutMs = 300000; // 5 минут вместо 25 секунд
+    const timeoutId = window.setTimeout(() => {
+      setAnalysisTookLong(true);
+      logEvent('TenderAnalysis', 'analysis_taking_long', 'warn', {
+        durationMs: timeoutMs,
+        message: 'Анализ занимает больше времени чем обычно. Это нормально для больших документов.'
+      });
+    }, timeoutMs);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [isAnalyzing, analysisStartedAt, analysisTookLong]);
+
+  // Предупреждение при попытке уйти до запуска анализа (документы будут потеряны)
+  useEffect(() => {
+    const hasPendingDocuments =
+      ((singleFile || packageFiles.length > 0) && !singleResult && !packageResult);
+    const hasInProgressAnalysis = isAnalyzing;
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (!hasPendingDocuments && !hasInProgressAnalysis) return;
+      e.preventDefault();
+      e.returnValue = hasInProgressAnalysis
+        ? 'Анализ ещё не завершён. При выходе результат может быть потерян.'
+        : 'Анализ ещё не запущен. Документы будут потеряны.';
+      logEvent('TenderAnalysis', hasInProgressAnalysis ? 'analysis_abandoned' : 'exit_before_analysis', 'warn', {
+        mode: currentMode,
+        inProgress: hasInProgressAnalysis,
+        hasSingleFile: !!singleFile,
+        packageFilesCount: packageFiles.length,
+      });
+    };
+
+    const handlePopState = () => {
+      if (!hasPendingDocuments && !hasInProgressAnalysis) {
+        return;
+      }
+      const shouldLeave = window.confirm(
+        hasInProgressAnalysis
+          ? 'Анализ ещё не завершён. При выходе результат может быть потерян. Выйти без результата?'
+          : 'Анализ ещё не запущен. Документы будут потеряны. Выйти без анализа?'
+      );
+      if (shouldLeave) {
+        logEvent('TenderAnalysis', hasInProgressAnalysis ? 'analysis_abandoned' : 'exit_before_analysis', 'warn', {
+          mode: currentMode,
+          via: 'back_button',
+          inProgress: hasInProgressAnalysis,
+          hasSingleFile: !!singleFile,
+          packageFilesCount: packageFiles.length,
+        });
+      } else {
+        // Отменяем переход назад
+        window.history.forward();
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [singleFile, packageFiles, singleResult, packageResult, isAnalyzing, currentMode]);
 
   return (
     <>
@@ -507,12 +763,10 @@ const TenderAnalysis: React.FC<TenderAnalysisProps> = ({
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-3xl font-bold text-white mb-1">
-                {currentMode === 'single' ? 'Умный Аудит' : 'Комплексный Аудит Тендера'}
+                Управленческое решение по тендеру
               </h2>
               <p className="text-slate-400 text-sm">
-                {currentMode === 'single'
-                  ? 'Выберите сферу для активации профильных чек-листов'
-                  : 'Анализ пакета документов тендера'}
+                Анализ пакета документов для принятия решения директором
               </p>
             </div>
 
@@ -528,6 +782,13 @@ const TenderAnalysis: React.FC<TenderAnalysisProps> = ({
                   setSingleResult(null);
                   setPackageFiles([]);
                   setPackageResult(null);
+                  // Сбрасываем состояние анализа при переключении
+                  setIsAnalyzing(false);
+                  setError(null);
+                  setRateLimitError(null);
+                  setAnalysisStageIndex(0);
+                  setAnalysisStartedAt(null);
+                  setAnalysisTookLong(false);
                 }}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${currentMode === 'single'
                     ? 'bg-[#00d4ff] text-[#0f1419]'
@@ -557,31 +818,64 @@ const TenderAnalysis: React.FC<TenderAnalysisProps> = ({
             </div>
           </div>
 
-          {/* Выбор отрасли (только для single mode) */}
-          {currentMode === 'single' && (
-            <div className="flex bg-[#1a1f2e] p-1 rounded-xl border border-[#2a3441]">
-              {(['UNIVERSAL', 'IT', 'CONSTRUCTION', 'MEDICINE'] as string[]).map((ind) => {
-                const Icon = getIndustryIcon(ind);
-                const isActive = selectedIndustry === ind;
-                return (
-                  <button
-                    key={ind}
-                    onClick={() => {
-                      if (isAnalyzing) return;
-                      setSelectedIndustry(ind);
-                    }}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${isActive
-                        ? 'bg-[#00d4ff] text-[#0f1419]'
-                        : 'text-slate-400 hover:text-white'
-                      }`}
-                  >
-                    <Icon size={16} />
-                    {ind === 'UNIVERSAL' ? 'Универсальный' : ind === 'IT' ? 'IT и ПО' : ind === 'CONSTRUCTION' ? 'Строительство' : 'Медицина'}
-                  </button>
-                );
-              })}
+          {/* Выбор отрасли убран - всегда используется Универсальный для одиночного анализа */}
+
+          {/* Kill Switch Banner */}
+          <KillSwitchBanner status={killSwitchStatus} className="mb-6" />
+
+          {/* Disclaimer и индикатор этапов (показывается всегда до фиксации решения) */}
+          {!localDecision ? (
+            <div className="space-y-4 mb-6">
+              <div className="bg-[#1a1f2e] border border-[#2a3441] rounded-xl p-4">
+                <p className="text-sm text-slate-300 leading-relaxed">
+                  Вы загружаете документы для <strong className="text-white">аналитической оценки</strong>.
+                  Управленческое решение принимает директор.
+                </p>
+              </div>
+              {/* Индикатор этапов */}
+              <div className="flex items-center justify-center gap-4 text-sm">
+                <div className="flex items-center gap-2">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${
+                    (currentMode === 'single' && singleFile) || (currentMode === 'package' && packageFiles.length > 0)
+                      ? 'bg-[#00d4ff] text-[#0f1419]'
+                      : 'bg-[#2a3441] text-slate-400'
+                  }`}>
+                    1
+                  </div>
+                  <span className={((currentMode === 'single' && singleFile) || (currentMode === 'package' && packageFiles.length > 0)) ? 'text-slate-300' : 'text-slate-400'}>
+                    Загрузка
+                  </span>
+                </div>
+                <div className={`w-12 h-0.5 ${isAnalyzing ? 'bg-[#00d4ff]' : 'bg-[#2a3441]'}`}></div>
+                <div className="flex items-center gap-2">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${
+                    isAnalyzing ? 'bg-[#00d4ff] text-[#0f1419]' : 'bg-[#2a3441] text-slate-400'
+                  }`}>
+                    2
+                  </div>
+                  <span className={isAnalyzing ? 'text-slate-300' : 'text-slate-400'}>Анализ</span>
+                </div>
+                <div className={`w-12 h-0.5 ${(singleResult || packageResult) ? 'bg-[#00d4ff]' : 'bg-[#2a3441]'}`}></div>
+                <div className="flex items-center gap-2">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${
+                    (singleResult || packageResult) ? 'bg-[#00d4ff] text-[#0f1419]' : 'bg-[#2a3441] text-slate-400'
+                  }`}>
+                    3
+                  </div>
+                  <span className={(singleResult || packageResult) ? 'text-slate-300' : 'text-slate-400'}>Решение</span>
+                </div>
+                <div className={`w-12 h-0.5 ${localDecision ? 'bg-[#00d4ff]' : 'bg-[#2a3441]'}`}></div>
+                <div className="flex items-center gap-2">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${
+                    localDecision ? 'bg-[#00d4ff] text-[#0f1419]' : 'bg-[#2a3441] text-slate-400'
+                  }`}>
+                    4
+                  </div>
+                  <span className={localDecision ? 'text-slate-300' : 'text-slate-400'}>Действия</span>
+                </div>
+              </div>
             </div>
-          )}
+          ) : null}
 
           {/* Загрузка файлов */}
           {currentMode === 'single' ? (
@@ -603,9 +897,12 @@ const TenderAnalysis: React.FC<TenderAnalysisProps> = ({
                     <Upload className="text-[#00d4ff]" size={40} />
                   </div>
                 </div>
-                <h3 className="text-2xl font-bold text-white mb-3">Загрузите документ</h3>
+                <h3 className="text-2xl font-bold text-white mb-3">Добавьте документ для анализа тендера</h3>
                 <p className="text-slate-400 max-w-md mx-auto leading-relaxed">
-                  Поддерживаются форматы PDF, DOCX/DOC, TXT, RTF, XLS/XLSX
+                  Перетащите документ сюда или выберите файл. Поддерживаются форматы PDF, DOCX/DOC, TXT, RTF, XLS/XLSX.
+                </p>
+                <p className="text-slate-500 text-sm max-w-md mx-auto mt-3">
+                  Можно загрузить один документ: ТЗ, проект договора, извещение или расчёты.
                 </p>
               </div>
             ) : (
@@ -615,11 +912,15 @@ const TenderAnalysis: React.FC<TenderAnalysisProps> = ({
                     <FileText className="text-[#00d4ff]" size={20} />
                     <div>
                       <p className="text-white font-medium">{singleFile.name}</p>
-                      <p className="text-xs text-slate-400">{(singleFile.size / 1024 / 1024).toFixed(2)} MB</p>
+                      <p className="text-xs text-slate-400">{(singleFile.size / 1024 / 1024).toFixed(2)} MB · Файл добавлен в анализ</p>
                     </div>
                   </div>
                   <button
                     onClick={() => {
+                      logEvent('TenderAnalysis', 'file_removed', 'info', {
+                        mode: 'single',
+                        fileName: singleFile.name,
+                      });
                       setSingleFile(null);
                       setSingleResult(null);
                     }}
@@ -644,6 +945,18 @@ const TenderAnalysis: React.FC<TenderAnalysisProps> = ({
                     </>
                   )}
                 </button>
+                {isAnalyzing && (
+                  <button
+                    onClick={handleResetAnalysis}
+                    className="mt-3 w-full bg-[#1a1f2e] border border-[#ff4444]/30 text-[#ff4444] font-medium py-2 rounded-lg hover:bg-[#ff4444]/10 transition-all flex items-center justify-center gap-2"
+                  >
+                    <X size={16} />
+                    Прервать анализ
+                  </button>
+                )}
+                <p className="mt-2 text-xs text-slate-400 text-center">
+                  Анализ занимает до 30 секунд.
+                </p>
               </div>
             )
           ) : (
@@ -666,9 +979,12 @@ const TenderAnalysis: React.FC<TenderAnalysisProps> = ({
                     <Upload className="text-[#00d4ff]" size={40} />
                   </div>
                 </div>
-                <h3 className="text-2xl font-bold text-white mb-3">Загрузите пакет документов</h3>
+                <h3 className="text-2xl font-bold text-white mb-3">Добавьте документы для анализа тендера</h3>
                 <p className="text-slate-400 max-w-md mx-auto leading-relaxed">
-                  Поддерживаются форматы PDF, DOCX/DOC, TXT, RTF, XLS/XLSX. Можно загрузить несколько файлов одновременно.
+                  Перетащите документы сюда или выберите файлы. Поддерживаются форматы PDF, DOCX/DOC, TXT, RTF, XLS/XLSX.
+                </p>
+                <p className="text-slate-500 text-sm max-w-md mx-auto mt-3">
+                  Можно загрузить один или несколько документов: ТЗ, проект договора, извещение, расчёты.
                 </p>
               </div>
             ) : (
@@ -711,6 +1027,10 @@ const TenderAnalysis: React.FC<TenderAnalysisProps> = ({
                       <button
                         onClick={() => {
                           const newFiles = packageFiles.filter((_, i) => i !== idx);
+                          logEvent('TenderAnalysis', 'file_removed', 'info', {
+                            mode: 'package',
+                            fileName: file.name,
+                          });
                           setPackageFiles(newFiles);
                           if (newFiles.length === 0) {
                             setPackageResult(null);
@@ -736,12 +1056,70 @@ const TenderAnalysis: React.FC<TenderAnalysisProps> = ({
                     </>
                   ) : (
                     <>
-                      Запустить комплексный аудит <ArrowRight size={20} />
+                      Запустить анализ <ArrowRight size={20} />
                     </>
                   )}
                 </button>
+                {isAnalyzing && (
+                  <button
+                    onClick={handleResetAnalysis}
+                    className="mt-3 w-full bg-[#1a1f2e] border border-[#ff4444]/30 text-[#ff4444] font-medium py-2 rounded-lg hover:bg-[#ff4444]/10 transition-all flex items-center justify-center gap-2"
+                  >
+                    <X size={16} />
+                    Прервать анализ
+                  </button>
+                )}
+                <p className="mt-2 text-xs text-slate-400 text-center">
+                  Анализ занимает до 30 секунд.
+                </p>
               </div>
             )
+          )}
+
+          {/* Индикатор процесса анализа */}
+          {isAnalyzing && (
+            <div className="bg-[#0f1419] border border-[#00d4ff]/30 rounded-2xl p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Loader2 className="animate-spin text-[#00d4ff]" size={24} />
+                  <div>
+                    <h3 className="text-lg font-bold text-white">Анализ в процессе</h3>
+                    <p className="text-sm text-slate-400">
+                      {analysisStages[analysisStageIndex] || 'Обработка документов...'}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={handleResetAnalysis}
+                  className="px-4 py-2 bg-[#1a1f2e] border border-[#ff4444]/30 text-[#ff4444] font-medium rounded-lg hover:bg-[#ff4444]/10 transition-all flex items-center gap-2"
+                >
+                  <X size={16} />
+                  Прервать
+                </button>
+              </div>
+              {analysisTookLong && (
+                <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3">
+                  <p className="text-sm text-yellow-400">
+                    Анализ занимает больше времени, чем обычно. Это может быть связано с размером документов или нагрузкой на сервер.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Что произойдёт после загрузки + юридические гарантии */}
+          {(singleFile || packageFiles.length > 0) && !singleResult && !packageResult && !isAnalyzing && (
+            <div className="bg-[#0f1419] border border-[#2a3441] rounded-2xl p-4 space-y-2">
+              <h3 className="text-sm font-bold text-white">Что произойдёт после загрузки</h3>
+              <ul className="text-sm text-slate-300 list-disc list-inside space-y-1">
+                <li>Документы будут проанализированы автоматически.</li>
+                <li>Вы получите картину рисков и ключевые выводы по тендеру.</li>
+                <li>Решение фиксируется только директором, не системой.</li>
+              </ul>
+              <p className="text-[11px] text-slate-500 mt-2">
+                Документы используются только для анализа. Не сохраняются для обучения моделей. Обработка соответствует 152-ФЗ.
+              </p>
+            </div>
           )}
 
           {/* Ошибки */}
@@ -756,6 +1134,44 @@ const TenderAnalysis: React.FC<TenderAnalysisProps> = ({
           {/* Результаты анализа - Single Mode */}
           {currentMode === 'single' && singleResult && (
             <div className="animate-fade-in space-y-6">
+              {/* Decision Preview — ориентация директора перед решением */}
+              {!localDecision && (
+                <DecisionPreview
+                  result={singleResult}
+                  documentsCount={1}
+                  fixedDecision={localDecision ? {
+                    decision: localDecision.decision,
+                    timestamp: localDecision.timestamp,
+                    comment: localDecision.comment,
+                  } : undefined}
+                  onGoToDetails={() => {
+                    const detailsSection = document.querySelector('[data-section="details"]');
+                    if (detailsSection) {
+                      detailsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    } else {
+                      window.scrollTo({ top: 600, behavior: 'smooth' });
+                    }
+                  }}
+                  onGoToDecision={() => {
+                    const decisionSection = document.querySelector('[data-section="decision-block"]');
+                    if (decisionSection) {
+                      decisionSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    } else {
+                      window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+                    }
+                  }}
+                />
+              )}
+
+              {/* Паспорт тендера (в начале анализа) */}
+              <TenderContextPanel
+                passport={singleResult.passport}
+                passportValidation={singleResult.passportValidation}
+                passportEvidence={singleResult.passportEvidence}
+                documentsCount={1}
+                decisionRecorded={!!localDecision}
+              />
+
               {/* Hero Verdict */}
               <HeroVerdict
                 verdict={singleResult.verdict}
@@ -764,6 +1180,7 @@ const TenderAnalysis: React.FC<TenderAnalysisProps> = ({
                 mainProblem={singleResult.executive_summary?.split('\n').find(line =>
                   line.toLowerCase().includes('проблема') || line.toLowerCase().includes('риск')
                 )}
+                hasDealBreakers={!!(singleResult.deal_breakers && singleResult.deal_breakers.length > 0)}
                 onShowDetails={() => {
                   const detailsSection = document.querySelector('[data-section="details"]');
                   if (detailsSection) {
@@ -799,9 +1216,52 @@ const TenderAnalysis: React.FC<TenderAnalysisProps> = ({
                   <FinancialMetricsGrid
                     passport={singleResult.passport}
                     financialAnalysis={singleResult.financial_analysis}
+                    decisionRecorded={!!localDecision}
                   />
                 </div>
               )}
+
+              {/* Deal Breakers */}
+              <DealBreakersPanel
+                dealBreakers={singleResult.deal_breakers || []}
+                onGenerateProtocol={onOpenGenerator ? (dealBreakers) => {
+                  onOpenGenerator(dealBreakers, singleResult.smart_questions);
+                } : undefined}
+              />
+
+              {/* Decision Block — фиксация управленческого решения (single mode)
+                  КАНОН: после DealBreakers и ДО RiskNarrative */}
+              <div data-section="decision-block">
+                <DecisionBlock
+                  verdict={singleResult.verdict}
+                  dealBreakersCount={singleResult.deal_breakers?.length ?? 0}
+                  fixedDecision={localDecision?.decision}
+                  fixedAt={localDecision?.timestamp}
+                  fixedComment={localDecision?.comment}
+                  onDecision={(decisionData: DecisionData) => {
+                    const userDecision: UserDecision = {
+                      decision: decisionData.decision,
+                      comment: decisionData.comment,
+                      timestamp: decisionData.timestamp,
+                    };
+
+                    // Обновляем локальное состояние для индикатора
+                    setLocalDecision(userDecision);
+
+                    // Уведомляем родителя — App.tsx обновляет currentDecision
+                    if (onDecisionChange) {
+                      onDecisionChange(userDecision);
+                    }
+
+                    // Логируем выбор пользователя
+                    logEvent('Decision', 'decision_saved', 'info', {
+                      mode: 'single',
+                      decision: decisionData.decision,
+                      hasComment: !!decisionData.comment,
+                    });
+                  }}
+                />
+              </div>
 
               {/* Risk Narrative */}
               <RiskNarrative
@@ -809,17 +1269,15 @@ const TenderAnalysis: React.FC<TenderAnalysisProps> = ({
                   ...issue,
                   legalReferences: legalReferencesMap.get(issue.title),
                 }))}
-                dealBreakers={singleResult.deal_breakers}
-                onGenerateProtocol={onOpenGenerator ? (dealBreakers) => {
-                  onOpenGenerator(dealBreakers, singleResult.smart_questions);
-                } : undefined}
                 onViewKnowledge={onViewKnowledge}
+                decisionRecorded={!!localDecision}
               />
 
               {/* Decision Support */}
               <DecisionSupport
                 verdict={singleResult.verdict}
                 score={singleResult.score}
+                dealBreakersCount={singleResult.deal_breakers?.length ?? 0}
                 financialAnalysis={singleResult.financial_analysis}
                 smartQuestions={singleResult.smart_questions}
               />
@@ -834,12 +1292,74 @@ const TenderAnalysis: React.FC<TenderAnalysisProps> = ({
           {/* Результаты анализа - Package Mode */}
           {currentMode === 'package' && packageResult && (
             <div className="animate-fade-in space-y-6">
+              {/* Decision Preview — ориентация директора перед решением */}
+              {!localDecision && (
+                <DecisionPreview
+                  result={{
+                    verdict: packageResult.verdict,
+                    score: Math.round(packageResult.summaryScore),
+                    summary: packageResult.hub?.recommendation?.summaryShort || `Анализ пакета из ${packageResult.documents.length} документов завершен.`,
+                    executive_summary: packageResult.hub?.recommendation?.summaryShort || `Анализ пакета из ${packageResult.documents.length} документов завершен.`,
+                    deal_breakers: packageResult.globalIssues
+                      ?.filter(gi => (gi.severity_level === 'DEAL_BREAKER') || 
+                              (gi.severity?.toLowerCase() === 'critical' || gi.severity?.toLowerCase() === 'high'))
+                      ?.map(gi => gi.title) || [],
+                    issues: packageResult.globalIssues
+                      ?.filter(gi => gi.severity_level !== 'DEAL_BREAKER' && 
+                              !(gi.severity?.toLowerCase() === 'critical' || gi.severity?.toLowerCase() === 'high'))
+                      ?.map(gi => ({
+                        title: gi.title || 'Риск',
+                        description: gi.description || gi.title || 'Риск',
+                        severity: gi.severity || 'medium',
+                        severity_level: gi.severity_level,
+                      })) || [],
+                  } as AnalysisResult}
+                  documentsCount={packageResult.documents.length}
+                  fixedDecision={localDecision ? {
+                    decision: localDecision.decision,
+                    timestamp: localDecision.timestamp,
+                    comment: localDecision.comment,
+                  } : undefined}
+                  onGoToDetails={() => {
+                    const detailsSection = document.querySelector('[data-section="details"]');
+                    if (detailsSection) {
+                      detailsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    } else {
+                      window.scrollTo({ top: 600, behavior: 'smooth' });
+                    }
+                  }}
+                  onGoToDecision={() => {
+                    const decisionSection = document.querySelector('[data-section="decision-block"]');
+                    if (decisionSection) {
+                      decisionSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    } else {
+                      window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+                    }
+                  }}
+                />
+              )}
+
+              {/* Паспорт тендера (по выбранному документу) */}
+              {selectedDoc?.passport && (
+                <TenderContextPanel
+                  passport={selectedDoc.passport}
+                  passportValidation={selectedDoc.passportValidation}
+                  passportEvidence={selectedDoc.passportEvidence}
+                  documentsCount={packageResult.documents.length}
+                  subtitle={`Паспорт по документу: ${selectedDoc.filename}`}
+                  decisionRecorded={!!localDecision}
+                />
+              )}
+
               {/* Hero Verdict */}
               <HeroVerdict
                 verdict={packageResult.verdict as VerdictType}
                 score={Math.round(packageResult.summaryScore)}
                 executiveSummary={packageResult.hub?.recommendation?.summaryShort || `Анализ пакета из ${packageResult.documents.length} документов завершен.`}
                 mainProblem={packageResult.globalIssues.length > 0 ? packageResult.globalIssues[0].title : undefined}
+                hasDealBreakers={packageResult.globalIssues.some(
+                  gi => gi.severity.toLowerCase() === 'critical' || gi.severity.toLowerCase() === 'high',
+                )}
                 onShowDetails={() => {
                   const detailsSection = document.querySelector('[data-section="details"]');
                   if (detailsSection) {
@@ -890,15 +1410,8 @@ const TenderAnalysis: React.FC<TenderAnalysisProps> = ({
                 </div>
               )}
 
-              {/* Risk Narrative */}
-              <RiskNarrative
-                risks={packageResult.globalIssues.map(gi => ({
-                  title: gi.title,
-                  description: gi.description,
-                  severity: gi.severity.toLowerCase(),
-                  recommendation: gi.details?.recommendation,
-                  legalReferences: legalReferencesMap.get(gi.title),
-                }))}
+              {/* Deal Breakers */}
+              <DealBreakersPanel
                 dealBreakers={packageResult.globalIssues
                   .filter(gi => gi.severity.toLowerCase() === 'critical' || gi.severity.toLowerCase() === 'high')
                   .map(gi => gi.title)}
@@ -906,6 +1419,52 @@ const TenderAnalysis: React.FC<TenderAnalysisProps> = ({
                   const smartQuestions = packageResult.hub?.recommendation?.actions?.map(a => a.text) || [];
                   onOpenGenerator(dealBreakers, smartQuestions);
                 } : undefined}
+              />
+
+              {/* Decision Block — фиксация управленческого решения (package mode)
+                  КАНОН: после DealBreakers и ДО RiskNarrative */}
+              <div data-section="decision-block">
+                <DecisionBlock
+                  verdict={packageResult.verdict as VerdictType}
+                  dealBreakersCount={packageResult.globalIssues.filter(
+                    gi => gi.severity.toLowerCase() === 'critical' || gi.severity.toLowerCase() === 'high',
+                  ).length}
+                  fixedDecision={localDecision?.decision}
+                  fixedAt={localDecision?.timestamp}
+                  fixedComment={localDecision?.comment}
+                  onDecision={(decisionData: DecisionData) => {
+                    const userDecision: UserDecision = {
+                      decision: decisionData.decision,
+                      comment: decisionData.comment,
+                      timestamp: decisionData.timestamp,
+                    };
+
+                    // Обновляем локальное состояние для индикатора
+                    setLocalDecision(userDecision);
+
+                    if (onDecisionChange) {
+                      onDecisionChange(userDecision);
+                    }
+
+                    logEvent('Decision', 'decision_saved', 'info', {
+                      mode: 'package',
+                      decision: decisionData.decision,
+                      hasComment: !!decisionData.comment,
+                    });
+                  }}
+                />
+              </div>
+
+              {/* Risk Narrative */}
+              <RiskNarrative
+                risks={packageResult.globalIssues.map(gi => ({
+                  title: gi.title,
+                  description: gi.description,
+                  severity: gi.severity.toLowerCase(),
+                  evidence: gi.evidence,
+                  recommendation: gi.details?.recommendation,
+                  legalReferences: legalReferencesMap.get(gi.title),
+                }))}
                 onViewKnowledge={onViewKnowledge}
               />
 
@@ -913,6 +1472,9 @@ const TenderAnalysis: React.FC<TenderAnalysisProps> = ({
               <DecisionSupport
                 verdict={packageResult.verdict as VerdictType}
                 score={Math.round(packageResult.summaryScore)}
+                dealBreakersCount={packageResult.globalIssues.filter(
+                  gi => gi.severity.toLowerCase() === 'critical' || gi.severity.toLowerCase() === 'high',
+                ).length}
                 financialAnalysis={packageResult.hub?.financial ? {
                   margin_risk: packageResult.hub.financial.lossRiskLevel === 'high' ? 'High' : packageResult.hub.financial.lossRiskLevel === 'medium' ? 'Medium' : 'Low',
                   cash_gap_risk: packageResult.hub.payments.advance === 'Нет' || packageResult.hub.payments.advance === '0%' ? 'Yes' : 'No',

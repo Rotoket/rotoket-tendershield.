@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { DollarSign, AlertTriangle, TrendingUp, RefreshCw, Briefcase, Percent } from 'lucide-react';
-import { CalculatorPreset } from '../types';
+import { CalculatorPreset, UserDecision } from '../types';
 import { logEvent } from '../utils/logger';
+import { isActionAllowed, getActionBlockedMessage } from '../utils/decisionRules';
 
 interface CalculatorProps {
     preset?: CalculatorPreset | null;
+    decision?: UserDecision;
 }
 
 // Простой парсер сумм вида "10 000 000 ₽" → 10000000
@@ -16,7 +18,22 @@ const parseAmountToNumber = (raw?: string): number | null => {
     return Number.isFinite(num) ? num : null;
 };
 
-const Calculator: React.FC<CalculatorProps> = ({ preset }) => {
+const Calculator: React.FC<CalculatorProps> = ({ preset, decision: decisionProp }) => {
+    // Decision должен приходить из App.tsx (единственный источник истины)
+    // localStorage используется ТОЛЬКО как fallback для legacy-совместимости
+    const getDecision = (): UserDecision | null => {
+        // Приоритет: пропс из App.tsx
+        if (decisionProp) return decisionProp;
+        // Fallback: localStorage (только для legacy, не primary)
+        try {
+            const stored = localStorage.getItem('last_user_decision');
+            return stored ? JSON.parse(stored) : null;
+        } catch {
+            return null;
+        }
+    };
+    
+    const [decision] = useState<UserDecision | null>(getDecision());
     const [nmck, setNmck] = useState(1000000);
     const [reduction, setReduction] = useState(5);
     const [costMaterials, setCostMaterials] = useState(600000);
@@ -33,6 +50,8 @@ const Calculator: React.FC<CalculatorProps> = ({ preset }) => {
 
     // Применяем пресет из анализа по кнопке
     const [lastPresetInfo, setLastPresetInfo] = useState<string | null>(null);
+    
+    // ❌ Убрано: слушание localStorage (decision должен приходить из App.tsx)
 
     useEffect(() => {
         const price = nmck * (1 - reduction / 100);
@@ -99,6 +118,80 @@ const Calculator: React.FC<CalculatorProps> = ({ preset }) => {
         setReduction(5);
         logEvent('Calculator', 'Сброшены базовые параметры НМЦК и снижения до значений по умолчанию');
     };
+
+    // Проверяем доступность калькулятора
+    const isCalculatorAllowed = isActionAllowed(decision, 'calculator');
+
+    // Логируем блокировку/разрешение
+    useEffect(() => {
+        if (decision) {
+            if (isCalculatorAllowed) {
+                logEvent('Decision', 'decision_action_allowed', 'info', {
+                    decision: decision.decision,
+                    action: 'calculator',
+                    source: 'Calculator',
+                });
+            } else {
+                logEvent('Decision', 'decision_action_blocked', 'info', {
+                    decision: decision.decision,
+                    action: 'calculator',
+                    source: 'Calculator',
+                });
+            }
+        } else {
+            // Если решения нет - логируем блокировку
+            logEvent('Decision', 'decision_action_blocked', 'info', {
+                decision: undefined,
+                action: 'calculator',
+                source: 'Calculator',
+            });
+        }
+    }, [decision, isCalculatorAllowed]);
+
+    // Если решение не зафиксировано — показываем экран блокировки
+    if (!decision) {
+        return (
+            <div className="animate-fade-in max-w-5xl mx-auto">
+                <div className="flex justify-between items-center mb-4">
+                    <div>
+                        <h2 className="text-3xl font-bold text-white mb-2">Тендерный Калькулятор</h2>
+                        <p className="text-[#a8b5cc]">Расчет маржинальности с учетом коэффициента риска (Sinaps Score)</p>
+                    </div>
+                </div>
+                <div className="bg-[#1a1f2e] border border-[#2a3441] rounded-2xl p-12 text-center">
+                    <AlertTriangle size={64} className="text-slate-400 mx-auto mb-4" />
+                    <h3 className="text-xl font-bold text-white mb-3">Сначала зафиксируйте решение</h3>
+                    <p className="text-slate-400 text-sm mb-4">
+                        Для использования калькулятора необходимо зафиксировать решение по тендеру в режиме анализа.
+                    </p>
+                    <p className="text-xs text-slate-500">
+                        Вернитесь к анализу и зафиксируйте решение в режиме директора.
+                    </p>
+                </div>
+            </div>
+        );
+    }
+
+    // Если калькулятор недоступен по другим причинам (например, решение = postpone)
+    if (!isCalculatorAllowed) {
+        const blockedMessage = getActionBlockedMessage(decision, 'calculator');
+        
+        return (
+            <div className="animate-fade-in max-w-5xl mx-auto">
+                <div className="flex justify-between items-center mb-4">
+                    <div>
+                        <h2 className="text-3xl font-bold text-white mb-2">Тендерный Калькулятор</h2>
+                        <p className="text-[#a8b5cc]">Расчет маржинальности с учетом коэффициента риска (Sinaps Score)</p>
+                    </div>
+                </div>
+                <div className="bg-[#1a1f2e] border border-[#2a3441] rounded-2xl p-12 text-center">
+                    <AlertTriangle size={64} className="text-slate-400 mx-auto mb-4" />
+                    <h3 className="text-xl font-bold text-white mb-3">Калькулятор недоступен</h3>
+                    <p className="text-slate-400 text-sm">{blockedMessage}</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="animate-fade-in max-w-5xl mx-auto">

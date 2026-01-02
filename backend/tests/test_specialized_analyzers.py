@@ -154,6 +154,7 @@ class TestIntegratedAnalysis:
 
 
 
+@pytest.mark.skip(reason="Функции detect_document_type и extract_*_summary были удалены из архитектуры. Функциональность перенесена в Preprocessor и Reasoning Layer.")
 def test_detect_inspection_report_and_basic_summary():
     # Импортируем хелперы классификации и извлечения техотчёта из main
     from main import detect_document_type, extract_inspection_summary
@@ -185,6 +186,7 @@ def test_detect_inspection_report_and_basic_summary():
     assert isinstance(safety, list)
 
 
+@pytest.mark.skip(reason="Функция detect_document_type была удалена из архитектуры. Функциональность перенесена в Preprocessor.")
 def test_detect_other_construction_doc_types():
     from main import detect_document_type
 
@@ -209,6 +211,7 @@ def test_detect_other_construction_doc_types():
     assert detect_document_type(guarantee_text, "Порядок обеспечения.docx") == "GUARANTEES_AND_SECURITY"
 
 
+@pytest.mark.skip(reason="Функция detect_document_type была удалена из архитектуры. Функциональность перенесена в Preprocessor.")
 def test_detect_onmck_doc_type():
     from main import detect_document_type
 
@@ -219,6 +222,7 @@ def test_detect_onmck_doc_type():
     )
 
 
+@pytest.mark.skip(reason="Функция extract_smeta_summary была удалена из архитектуры. Функциональность перенесена в Preprocessor и Reasoning Layer.")
 def test_smeta_summary_basic():
     from main import extract_smeta_summary
 
@@ -235,6 +239,7 @@ def test_smeta_summary_basic():
     assert summary.get("hasVAT") is True
 
 
+@pytest.mark.skip(reason="Функция extract_contract_risk_summary была удалена из архитектуры. Функциональность перенесена в Reasoning Layer.")
 def test_contract_risk_summary_basic():
     from main import extract_contract_risk_summary
 
@@ -254,6 +259,7 @@ def test_contract_risk_summary_basic():
     assert summary.get("warrantyPeriod") == "5 лет"
 
 
+@pytest.mark.skip(reason="Функция extract_it_spec_summary была удалена из архитектуры. Функциональность перенесена в Preprocessor и Reasoning Layer.")
 def test_it_spec_summary_basic():
     from main import extract_it_spec_summary
 
@@ -270,6 +276,7 @@ def test_it_spec_summary_basic():
     assert summary.get("hasSupport") is True
 
 
+@pytest.mark.skip(reason="Функция extract_real_estate_spec_summary была удалена из архитектуры. Функциональность перенесена в Preprocessor и Reasoning Layer.")
 def test_real_estate_spec_summary_basic():
     from main import extract_real_estate_spec_summary
 
@@ -287,6 +294,7 @@ def test_real_estate_spec_summary_basic():
     assert any("Уборка" in s or "клининг" in s for s in services)
 
 
+@pytest.mark.skip(reason="Функция extract_security_spec_summary была удалена из архитектуры. Функциональность перенесена в Preprocessor и Reasoning Layer.")
 def test_security_spec_summary_basic():
     from main import extract_security_spec_summary
 
@@ -306,6 +314,7 @@ def test_security_spec_summary_basic():
     assert summary.get("responseTimeMinutes") == 5
 
 
+@pytest.mark.skip(reason="Функция extract_unit_rates_summary была удалена из архитектуры. Функциональность перенесена в Preprocessor и Reasoning Layer.")
 def test_unit_rates_summary_basic():
     from main import extract_unit_rates_summary
 

@@ -5,11 +5,47 @@ import { verdictLabel, severityLabel } from './hubUiHelpers';
  * Строит текстовый отчёт по результатам комплексного аудита пакета документов.
  * Используется в UI и покрывается тестами (Rule 5).
  */
+const formatDecisionLabel = (decision: string): string => {
+  switch (decision) {
+    case 'participate':
+      return 'Участвовать';
+    case 'participate_with_conditions':
+      return 'Участвовать с условиями';
+    case 'do_not_participate':
+      return 'Не участвовать';
+    case 'postpone':
+      return 'Отложить решение';
+    default:
+      return decision;
+  }
+};
+
+const formatDateTime = (iso: string): string => {
+  try {
+    const d = new Date(iso);
+    return d.toLocaleString('ru-RU');
+  } catch {
+    return iso;
+  }
+};
+
 export const buildPackageAuditReport = (result: PackageAnalysis): string => {
   const lines: string[] = [];
 
   lines.push('ОТЧЁТ КОМПЛЕКСНОГО АУДИТА ПАКЕТА ТЕНДЕРНОЙ ДОКУМЕНТАЦИИ');
   lines.push('');
+  
+  // Секция решения (если есть) - ВСЕГДА ПЕРВАЯ
+  if (result.userDecision) {
+    lines.push('## Решение по тендеру');
+    lines.push(`Статус: ${formatDecisionLabel(result.userDecision.decision)}`);
+    lines.push(`Дата решения: ${formatDateTime(result.userDecision.timestamp)}`);
+    if (result.userDecision.comment) {
+      lines.push(`Комментарий: ${result.userDecision.comment}`);
+    }
+    lines.push('');
+  }
+  
   lines.push(`ID пакета: ${result.packageId}`);
   lines.push(`Итоговый балл: ${Math.round(result.summaryScore)} / 100`);
   lines.push(`Вердикт: ${verdictLabel(result.verdict)}`);
@@ -96,7 +132,7 @@ export const buildPackageAuditReport = (result: PackageAnalysis): string => {
 
     const acts = (doc.actions || []) as any[];
     if (acts.length) {
-      lines.push('  Рекомендуемые шаги (по мнению системы):');
+      lines.push('  Управленческие шаги (по мнению системы):');
       acts
         .slice()
         .sort((a, b) => (a.priority || 0) - (b.priority || 0))
@@ -109,7 +145,7 @@ export const buildPackageAuditReport = (result: PackageAnalysis): string => {
   lines.push('');
   lines.push('3. Важное замечание');
   lines.push(
-    'Система даёт предварительную аналитическую оценку и рекомендации. Решение об участии в закупке, подаче жалоб и иных действиях принимает специалист, ответственность несёт пользователь.',
+    'Система фиксирует предварительную аналитическую оценку на основе документов. Решение об участии в закупке, подаче жалоб и иных действиях принимает специалист, ответственность несёт пользователь.',
   );
 
   return lines.join('\n');

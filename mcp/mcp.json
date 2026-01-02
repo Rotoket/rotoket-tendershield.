@@ -1,0 +1,66 @@
+{
+  "mcpServers": {
+    "sequential-thinking": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"],
+      "timeout": 60000,
+      "description": "Structured problem-solving with step-by-step reasoning"
+    },
+    "context7": {
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp"],
+      "timeout": 30000,
+      "description": "Real-time documentation access for latest APIs and frameworks"
+    },
+    "playwright": {
+      "command": "npx",
+      "args": ["-y", "@playwright/mcp"],
+      "timeout": 120000,
+      "description": "Browser automation and E2E testing"
+    },
+    "filesystem": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "C:\\Users\\Dom\\Desktop\\tender-shield-pro\\tender"
+      ],
+      "timeout": 30000,
+      "description": "File operations: create, read, edit, delete. Base for processing tenders without cloud data transmission",
+      "allowedDirectories": [
+        "C:\\Users\\Dom\\Desktop\\tender-shield-pro"
+      ]
+    },
+    "pandoc": {
+      "command": "python",
+      "args": ["C:\\Users\\Dom\\Desktop\\tender-shield-pro\\pandoc_mcp.py"],
+      "timeout": 60000,
+      "description": "Pandoc document converter (Python-based, вечный сервер) - transforms tender documents into structured data and extracts НМЦК/ИУН",
+      "env": {
+        "PANDOC_PATH": "pandoc"
+      }
+    },
+    "postgres": {
+      "command": "npx",
+      "args": ["-y", "modelcontextprotocol-server-postgres"],
+      "env": {
+        "DATABASE_URL": "postgresql://postgres:postgres@localhost:5432/tender_shield"
+      },
+      "timeout": 30000,
+      "description": "PostgreSQL database operations and migrations"
+    },
+    "xlsx": {
+      "command": "npx",
+      "args": ["-y", "mcp-server-xlsx"],
+      "timeout": 30000,
+      "description": "Excel file reading and processing"
+    },
+    "knowledge-base": {
+      "command": "python",
+      "args": ["C:\\Users\\Dom\\Desktop\\tender-shield-pro\\backend\\services\\knowledge_base_mcp.py"],
+      "timeout": 30000,
+      "description": "Knowledge Base search and document access (RAG-powered)"
+    }
+  }
+}
+

@@ -34,6 +34,22 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
         tax_system: undefined,
     });
 
+    // Загружаем сохраненную тему при монтировании
+    useEffect(() => {
+        const savedTheme = localStorage.getItem('theme');
+        const htmlElement = document.documentElement;
+        
+        if (savedTheme === 'light') {
+            htmlElement.classList.remove('dark');
+            htmlElement.classList.add('light');
+            setIsDark(false);
+        } else {
+            htmlElement.classList.remove('light');
+            htmlElement.classList.add('dark');
+            setIsDark(true);
+        }
+    }, []);
+
     useEffect(() => {
         const loadProfile = async () => {
             setIsLoading(true);
@@ -77,8 +93,24 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
     }, [user]);
 
     const toggleTheme = () => {
-        document.documentElement.classList.toggle('dark');
-        setIsDark(!isDark);
+        const htmlElement = document.documentElement;
+        const isCurrentlyDark = htmlElement.classList.contains('dark');
+        
+        if (isCurrentlyDark) {
+            // Переключаем на светлую тему
+            htmlElement.classList.remove('dark');
+            htmlElement.classList.add('light');
+            setIsDark(false);
+            // Сохраняем предпочтение в localStorage
+            localStorage.setItem('theme', 'light');
+        } else {
+            // Переключаем на темную тему
+            htmlElement.classList.remove('light');
+            htmlElement.classList.add('dark');
+            setIsDark(true);
+            // Сохраняем предпочтение в localStorage
+            localStorage.setItem('theme', 'dark');
+        }
     };
 
     const handleOrgChange = (field: string, value: string) => {
@@ -159,7 +191,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                                     <p className="text-slate-400 text-sm mb-6">
                                         {profileData.tariff.name === 'Enterprise'
                                             ? 'Все инструменты разблокированы'
-                                            : `${profileData.tariff.analyses_limit === 0 ? '∞' : profileData.tariff.analyses_limit} анализов в месяц`}
+                                            : `${(profileData.tariff.analyses_limit === -1 || profileData.tariff.analyses_limit === 0) ? '∞' : profileData.tariff.analyses_limit} анализов в месяц`}
                                     </p>
 
                                     <div className="text-3xl font-bold text-white mb-1">
@@ -226,34 +258,34 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                                             <span className="text-slate-400">AI Анализ</span>
                                             <span className="text-white font-bold">
                                                 {profileData.usage.analyses_count}
-                                                {profileData.usage.analyses_limit > 0 && ` / ${profileData.usage.analyses_limit}`}
-                                                {profileData.usage.analyses_limit === 0 && ' / ∞'}
-                                            </span>
+                                        {profileData.usage.analyses_limit > 0 && ` / ${profileData.usage.analyses_limit}`}
+                                        {(profileData.usage.analyses_limit === -1 || profileData.usage.analyses_limit === 0) && ' / ∞'}
+                                    </span>
+                                </div>
+                                {profileData.usage.analyses_limit > 0 ? (
+                                    <>
+                                        <div className="w-full h-2 bg-[#0f1419] rounded-full overflow-hidden">
+                                            <div
+                                                className={`h-full ${profileData.usage.analyses_remaining === 0
+                                                    ? 'bg-red-500'
+                                                    : profileData.usage.analyses_remaining <= profileData.usage.analyses_limit * 0.2
+                                                        ? 'bg-yellow-500'
+                                                        : 'bg-[#00d4ff]'
+                                                    }`}
+                                                style={{
+                                                    width: `${Math.min(100, (profileData.usage.analyses_count / profileData.usage.analyses_limit) * 100)}%`
+                                                }}
+                                            ></div>
                                         </div>
-                                        {profileData.usage.analyses_limit > 0 ? (
-                                            <>
-                                                <div className="w-full h-2 bg-[#0f1419] rounded-full overflow-hidden">
-                                                    <div
-                                                        className={`h-full ${profileData.usage.analyses_remaining === 0
-                                                            ? 'bg-red-500'
-                                                            : profileData.usage.analyses_remaining <= profileData.usage.analyses_limit * 0.2
-                                                                ? 'bg-yellow-500'
-                                                                : 'bg-[#00d4ff]'
-                                                            }`}
-                                                        style={{
-                                                            width: `${Math.min(100, (profileData.usage.analyses_count / profileData.usage.analyses_limit) * 100)}%`
-                                                        }}
-                                                    ></div>
-                                                </div>
-                                                {profileData.usage.analyses_remaining >= 0 && (
-                                                    <p className="text-xs text-slate-500 mt-1">
-                                                        Осталось: {profileData.usage.analyses_remaining} анализов
-                                                    </p>
-                                                )}
-                                            </>
-                                        ) : (
-                                            <p className="text-xs text-slate-500 mt-1">Безлимитный тариф</p>
+                                        {profileData.usage.analyses_remaining >= 0 && (
+                                            <p className="text-xs text-slate-500 mt-1">
+                                                Осталось: {profileData.usage.analyses_remaining} анализов
+                                            </p>
                                         )}
+                                    </>
+                                ) : (
+                                    <p className="text-xs text-slate-500 mt-1">Безлимитный тариф</p>
+                                )}
                                     </div>
 
                                     <div>
@@ -262,7 +294,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
                                             <span className="text-white font-bold">
                                                 {profileData.usage.packages_count}
                                                 {profileData.usage.package_limit > 0 && ` / ${profileData.usage.package_limit}`}
-                                                {profileData.usage.package_limit === 0 && ' / ∞'}
+                                                {(profileData.usage.package_limit === -1 || profileData.usage.package_limit === 0) && ' / ∞'}
                                             </span>
                                         </div>
                                         {profileData.usage.package_limit > 0 ? (

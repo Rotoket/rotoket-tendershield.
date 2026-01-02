@@ -49,10 +49,15 @@ class EmailService:
         """
         if USE_MOCK_EMAIL:
             # Эмуляция отправки для разработки
-            logger.info(f"[MOCK EMAIL] Отправка письма:")
+            logger.info(f"[MOCK EMAIL] ⚠️ SMTP не настроен, эмулируем отправку:")
             logger.info(f"  To: {to_email}")
             logger.info(f"  Subject: {subject}")
-            logger.info(f"  Body: {html_body[:100]}...")
+            logger.info(f"  Body: {html_body[:200]}...")
+            logger.info(f"  💡 Для реальной отправки настройте SMTP в backend/.env:")
+            logger.info(f"     TENDER_SMTP_HOST=smtp.gmail.com")
+            logger.info(f"     TENDER_SMTP_PORT=587")
+            logger.info(f"     TENDER_SMTP_USER=your-email@gmail.com")
+            logger.info(f"     TENDER_SMTP_PASSWORD=your-app-password")
             return True
         
         try:
@@ -70,8 +75,11 @@ class EmailService:
             html_part = MIMEText(html_body, 'html', 'utf-8')
             msg.attach(html_part)
             
-            # Отправляем
-            with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
+            # Отправляем с таймаутом
+            import socket
+            socket.setdefaulttimeout(10)  # 10 секунд таймаут
+            
+            with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=10) as server:
                 if SMTP_USE_TLS:
                     server.starttls()
                 server.login(SMTP_USER, SMTP_PASSWORD)
@@ -80,14 +88,27 @@ class EmailService:
             logger.info(f"✅ Email отправлен: {to_email} - {subject}")
             return True
             
-        except Exception as e:
-            logger.error(f"❌ Ошибка отправки email: {e}")
+        except smtplib.SMTPAuthenticationError as e:
+            logger.error(f"❌ Ошибка аутентификации SMTP: {e}")
+            logger.error("Проверьте SMTP_USER и SMTP_PASSWORD в .env")
             return False
+        except smtplib.SMTPException as e:
+            logger.error(f"❌ Ошибка SMTP: {e}")
+            return False
+        except socket.timeout:
+            logger.error(f"❌ Таймаут при отправке email на {SMTP_HOST}:{SMTP_PORT}")
+            return False
+        except Exception as e:
+            logger.error(f"❌ Ошибка отправки email: {e}", exc_info=True)
+            return False
+        finally:
+            # Сбрасываем таймаут
+            socket.setdefaulttimeout(None)
     
     @staticmethod
     def send_welcome_email(email: str, name: str = None, trial_days: int = 14) -> bool:
         """Отправляет приветственное письмо после регистрации"""
-        subject = "Добро пожаловать в Tender Shield Pro! 🎉"
+        subject = "Добро пожаловать в систему Тендер.Щит! 🎉"
         
         name_display = name if name else "Специалист"
         
@@ -113,7 +134,7 @@ class EmailService:
                     <h1>Добро пожаловать, {name_display}!</h1>
                 </div>
                 <div class="content">
-                    <p>Спасибо за регистрацию в Tender Shield Pro!</p>
+                    <p>Спасибо за регистрацию в системе Тендер.Щит!</p>
                     
                     <p>У вас есть <strong>{trial_days} дней бесплатного триала</strong> с полным доступом ко всем функциям:</p>
                     
@@ -132,7 +153,7 @@ class EmailService:
                     <p style="margin-top: 30px; color: #666; font-size: 14px;">
                         Если у вас есть вопросы, мы всегда готовы помочь!<br>
                         С уважением,<br>
-                        Команда Tender Shield Pro
+                        Команда Тендер.Щит
                     </p>
                 </div>
             </div>
@@ -145,7 +166,7 @@ class EmailService:
     @staticmethod
     def send_trial_reminder(email: str, name: str = None, days_remaining: int = 7) -> bool:
         """Отправляет напоминание о триале"""
-        subject = f"Осталось {days_remaining} дней триала в Tender Shield Pro"
+        subject = f"Осталось {days_remaining} дней триала в системе Тендер.Щит"
         
         name_display = name if name else "Специалист"
         
@@ -170,9 +191,9 @@ class EmailService:
                 <div class="content">
                     <p>Привет, {name_display}!</p>
                     
-                    <p>У вас осталось <strong>{days_remaining} дней</strong> бесплатного триала в Tender Shield Pro.</p>
+                    <p>У вас осталось <strong>{days_remaining} дней</strong> бесплатного триала в системе Тендер.Щит.</p>
                     
-                    <p>Успели протестировать все функции? Готовы ли обсудить, как Tender Shield Pro может помочь вашей компании?</p>
+                    <p>Успели протестировать все функции? Готовы ли обсудить, как система Тендер.Щит может помочь вашей компании?</p>
                     
                     <p>Если у вас есть вопросы или нужна помощь, мы всегда на связи!</p>
                     
@@ -180,7 +201,7 @@ class EmailService:
                     
                     <p style="margin-top: 30px; color: #666; font-size: 14px;">
                         С уважением,<br>
-                        Команда Tender Shield Pro
+                        Команда Тендер.Щит
                     </p>
                 </div>
             </div>
@@ -193,7 +214,7 @@ class EmailService:
     @staticmethod
     def send_trial_ending_email(email: str, name: str = None) -> bool:
         """Отправляет письмо об окончании триала"""
-        subject = "Триал заканчивается завтра - продлите доступ!"
+        subject = "Триал заканчивается завтра — продлите доступ в системе Тендер.Щит"
         
         name_display = name if name else "Специалист"
         
@@ -219,7 +240,7 @@ class EmailService:
                 <div class="content">
                     <p>Привет, {name_display}!</p>
                     
-                    <p>Завтра заканчивается ваш бесплатный триал в Tender Shield Pro.</p>
+                    <p>Завтра заканчивается ваш бесплатный триал в системе Тендер.Щит.</p>
                     
                     <div class="offer">
                         <p><strong>🎁 Специальное предложение:</strong></p>
@@ -237,7 +258,7 @@ class EmailService:
                     <p style="margin-top: 30px; color: #666; font-size: 14px;">
                         Если у вас есть вопросы, напишите нам!<br>
                         С уважением,<br>
-                        Команда Tender Shield Pro
+                        Команда Тендер.Щит
                     </p>
                 </div>
             </div>
@@ -250,7 +271,7 @@ class EmailService:
     @staticmethod
     def send_trial_ended_email(email: str, name: str = None) -> bool:
         """Отправляет письмо после окончания триала"""
-        subject = "Триал закончился - вернитесь в Tender Shield Pro!"
+        subject = "Триал закончился — вернитесь в систему Тендер.Щит!"
         
         name_display = name if name else "Специалист"
         
@@ -275,7 +296,7 @@ class EmailService:
                 <div class="content">
                     <p>Привет, {name_display}!</p>
                     
-                    <p>Ваш бесплатный триал в Tender Shield Pro закончился.</p>
+                    <p>Ваш бесплатный триал в системе Тендер.Щит закончился.</p>
                     
                     <p>Но мы хотим, чтобы вы остались с нами! Вы можете:</p>
                     <ul>
@@ -287,7 +308,7 @@ class EmailService:
                     
                     <p style="margin-top: 30px; color: #666; font-size: 14px;">
                         С уважением,<br>
-                        Команда Tender Shield Pro
+                        Команда Тендер.Щит
                     </p>
                 </div>
             </div>
@@ -300,20 +321,19 @@ class EmailService:
     @staticmethod
     def send_password_reset_email(email: str, name: str = None, reset_token: str = None, reset_url: str = None) -> bool:
         """Отправляет письмо со ссылкой для сброса пароля"""
-        subject = "Сброс пароля в Tender Shield Pro"
+        subject = "Сброс пароля в системе Тендер.Щит"
         
         name_display = name if name else "Специалист"
         
         # Если передан reset_url, используем его, иначе формируем из токена
         if not reset_url and reset_token:
-            # Для локальной разработки используем localhost, в продакшене нужно будет заменить на реальный домен
-            # Можно настроить через переменную окружения FRONTEND_URL
             frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:5173')
-            reset_url = f"{frontend_url}/?token={reset_token}"
+            reset_url = f"{frontend_url}/reset-password?token={reset_token}"
         elif not reset_url:
             frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:5173')
-            reset_url = f"{frontend_url}/"
+            reset_url = f"{frontend_url}/reset-password"
         
+        # Упрощённый текст письма (как в требованиях)
         html_body = f"""
         <!DOCTYPE html>
         <html>
@@ -322,41 +342,22 @@ class EmailService:
             <style>
                 body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
                 .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
-                .header {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }}
-                .content {{ background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }}
-                .button {{ display: inline-block; padding: 12px 30px; background: #667eea; color: white; text-decoration: none; border-radius: 5px; margin-top: 20px; }}
-                .warning {{ background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0; }}
+                .content {{ background: #f9f9f9; padding: 30px; border-radius: 10px; }}
+                .button {{ display: inline-block; padding: 12px 30px; background: #667eea; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }}
             </style>
         </head>
         <body>
             <div class="container">
-                <div class="header">
-                    <h1>🔐 Сброс пароля</h1>
-                </div>
                 <div class="content">
-                    <p>Привет, {name_display}!</p>
+                    <p>Вы запросили восстановление пароля.</p>
+                    <p>Если это были не вы — просто проигнорируйте письмо.</p>
                     
-                    <p>Мы получили запрос на сброс пароля для вашего аккаунта в Tender Shield Pro.</p>
-                    
-                    <p>Для сброса пароля нажмите на кнопку ниже:</p>
-                    
+                    <p>Для сброса пароля перейдите по ссылке:</p>
                     <a href="{reset_url}" class="button">Сбросить пароль</a>
                     
-                    <div class="warning">
-                        <p><strong>⚠️ Важно:</strong></p>
-                        <ul>
-                            <li>Ссылка действительна в течение <strong>1 часа</strong></li>
-                            <li>Если вы не запрашивали сброс пароля, просто проигнорируйте это письмо</li>
-                            <li>Ваш пароль не изменится, пока вы не перейдёте по ссылке и не введёте новый пароль</li>
-                        </ul>
-                    </div>
-                    
-                    <p>Если кнопка не работает, скопируйте и вставьте эту ссылку в браузер:</p>
-                    <p style="word-break: break-all; color: #667eea;">{reset_url}</p>
-                    
-                    <p style="margin-top: 30px; color: #666; font-size: 14px;">
-                        С уважением,<br>
-                        Команда Tender Shield Pro
+                    <p style="margin-top: 20px; font-size: 12px; color: #666;">
+                        Ссылка действительна 30 минут.<br>
+                        Если кнопка не работает, скопируйте ссылку: {reset_url}
                     </p>
                 </div>
             </div>

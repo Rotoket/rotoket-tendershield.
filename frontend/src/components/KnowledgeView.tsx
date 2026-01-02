@@ -96,13 +96,27 @@ const KnowledgeView: React.FC<KnowledgeViewProps> = ({ initialQuery }) => {
         </button>
       </form>
 
-      {error && <div className="mb-3 text-xs text-red-400">{error}</div>}
+      {error && (
+        <div className="mb-3 p-3 rounded-lg bg-red-500/10 border border-red-500/50 text-xs text-red-400">
+          <strong>Ошибка поиска:</strong> {error}
+          <br />
+          <span className="text-red-500/70">Проверьте подключение к серверу и попробуйте снова.</span>
+        </div>
+      )}
 
       {isLoading ? (
-        <div className="flex-1 flex items-center justify-center text-sm text-slate-400">
-          Поиск по базе знаний...
+        <div className="flex-1 flex flex-col items-center justify-center text-sm text-slate-400">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#00d4ff] mb-2"></div>
+          <div>Поиск по базе знаний...</div>
         </div>
-      ) : results.length === 0 ? (
+      ) : query.trim() && results.length === 0 ? (
+        <div className="flex-1 flex items-center justify-center text-sm text-slate-400 text-center max-w-md mx-auto">
+          <div>
+            <p className="mb-2">По запросу "{query}" ничего не найдено.</p>
+            <p className="text-xs text-slate-500">Попробуйте изменить формулировку или использовать другие ключевые слова.</p>
+          </div>
+        </div>
+      ) : !query.trim() ? (
         <div className="flex-1 flex items-center justify-center text-sm text-slate-400 text-center max-w-md mx-auto">
           Введите запрос, чтобы найти релевантные нормы закона и типовые ситуации.
         </div>
